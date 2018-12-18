@@ -1,6 +1,6 @@
 /*!
- * @file
- * @brief key and signature helping functions
+ * @file    key_handling.h
+ * @brief   key and signature helping functions
  *
  * @author Waldemar Gruenwald
  * @date   2018-10-10

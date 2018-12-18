@@ -1,6 +1,6 @@
 /*!
- * @file
- * @brief key and signature helping functions
+ * @file    key handling.c
+ * @brief   key and signature helping functions
  *
  * @author Waldemar Gruenwald
  * @date   2018-10-10
@@ -39,9 +39,11 @@ static const char *TAG = "KEYSTORE";
 
 extern unsigned char UUID[16];
 
+// define buffer for the key pair
 unsigned char ed25519_secret_key[crypto_sign_SECRETKEYBYTES] = {};
 unsigned char ed25519_public_key[crypto_sign_PUBLICKEYBYTES] = {};
 
+// actual ubirch key server public key
 const unsigned char server_pub_key[crypto_sign_PUBLICKEYBYTES] = {
         0xa2, 0x40, 0x3b, 0x92, 0xbc, 0x9a, 0xdd, 0x36,
         0x5b, 0x3c, 0xd1, 0x2f, 0xf1, 0x20, 0xd0, 0x20,
@@ -53,7 +55,10 @@ const unsigned char server_pub_key[crypto_sign_PUBLICKEYBYTES] = {
 /*!
  * Read the Key values from memory
  *
- * return error, true, if something went wrong, false if keys are available
+ * @note:   key buffer `ed25519_secret_key` and `ed25519_public_key` have to be allocated, before calling this function.
+ *
+ * @return  ESP_OK if keys were loaded sucessfully
+ *          ESP_ERR... if any error occured
  */
 static esp_err_t load_keys(void) {
     ESP_LOGI(TAG, "read keys");
@@ -79,7 +84,8 @@ static esp_err_t load_keys(void) {
 /*!
  * Write the key values to the memory
  *
- * @return error: true, if something went wrong, false if keys were successfully stored
+ * @return  ESP_OK if keys were stored sucessfully
+ *          ESP_ERR... if any error occured
  */
 static esp_err_t store_keys(void) {
     ESP_LOGI(TAG, "write keys");
