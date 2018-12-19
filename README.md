@@ -17,7 +17,7 @@ The following components are required for the functionality, see also
 - [ubirch-esp32-api-http](https://github.com/ubirch/ubirch-esp32-api-http)
 
 
-## Functionality
+## Usage
 
 The function `create_keys()` creates a new key pair and stores it in the
 flash memory. Additionally it creates a [ubirch_key_info](https://github.com/ubirch/ubirch-protocol/blob/master/ubirch/ubirch_protocol_kex.h)
@@ -27,7 +27,11 @@ signed and stored into the flash memory.
 
 The function `register_keys()` loads the key certificate from the flash
 memory and sends it via [ubirch_send()](https://github.com/ubirch/ubirch-esp32-api-http/blob/master/ubirch_api.h)
-to the ubirch backend.
+to the registered backend.
+
+> If this component is part of the [example-esp32](https://github.com/ubirch/example-esp32),
+run `make menuconfig` and go to `UBIRCH Application` to update the key server URL
+
 
 The function `check_key_status()` checks for existing keys in the flash
 memory and if no keys are present, creates new keys.
