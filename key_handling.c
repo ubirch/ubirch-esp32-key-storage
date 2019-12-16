@@ -32,6 +32,7 @@
 
 #include "ubirch_ed25519.h"
 #include "ubirch_protocol_kex.h"
+#include "ubirch_protocol.h"
 
 #include "key_handling.h"
 

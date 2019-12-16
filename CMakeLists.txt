@@ -7,7 +7,7 @@ set(COMPONENT_REQUIRES
         ubirch-esp32-networking
         ubirch-esp32-storage
         ubirch-protocol
-        ubirch-mbed-msgpack
+        msgpack-c
         ubirch-esp32-api-http
         )
 
