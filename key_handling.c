@@ -156,7 +156,7 @@ void register_keys(void) {
     }
 
     // send the data
-    err = ubirch_send(CONFIG_UBIRCH_BACKEND_KEY_SERVER_URL, sbuf->data, sbuf->size, NULL);
+    err = ubirch_send(CONFIG_UBIRCH_BACKEND_KEY_SERVER_URL, UUID, sbuf->data, sbuf->size, NULL);
     if(err != ESP_OK) {
         ESP_LOGE(TAG, "unable to send registration");
     }
