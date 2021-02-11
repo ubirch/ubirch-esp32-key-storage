@@ -156,12 +156,19 @@ void register_keys(void) {
     }
 
     // send the data
-    err = ubirch_send(CONFIG_UBIRCH_BACKEND_KEY_SERVER_URL, UUID, sbuf->data, sbuf->size, NULL);
-    if(err != ESP_OK) {
-        ESP_LOGE(TAG, "unable to send registration");
+    // TODO: verify response
+    int http_status;
+    if (ubirch_send(CONFIG_UBIRCH_BACKEND_KEY_SERVER_URL, UUID, sbuf->data, sbuf->size, &http_status, NULL, NULL)
+            == UBIRCH_SEND_OK) {
+        if (http_status == 200) {
+            ESP_LOGI(TAG, "successfull sent registration");
+        } else {
+            ESP_LOGE(TAG, "unable to send registration");
+        }
+    } else {
+        ESP_LOGE(TAG, "error while sending registration");
     }
     msgpack_sbuffer_free(sbuf);
-    ESP_LOGI(TAG, "successfull sent registration");
 }
 
 
