@@ -44,13 +44,8 @@ extern unsigned char UUID[16];
 unsigned char ed25519_secret_key[crypto_sign_SECRETKEYBYTES] = {};
 unsigned char ed25519_public_key[crypto_sign_PUBLICKEYBYTES] = {};
 
-// actual ubirch key server public key
-const unsigned char server_pub_key[crypto_sign_PUBLICKEYBYTES] = {
-        0xa2, 0x40, 0x3b, 0x92, 0xbc, 0x9a, 0xdd, 0x36,
-        0x5b, 0x3c, 0xd1, 0x2f, 0xf1, 0x20, 0xd0, 0x20,
-        0x64, 0x7f, 0x84, 0xea, 0x69, 0x83, 0xf9, 0x8b,
-        0xc4, 0xc8, 0x7e, 0x0f, 0x4b, 0xe8, 0xcd, 0x66
-};
+// define buffer for server public key
+unsigned char server_pub_key[crypto_sign_PUBLICKEYBYTES] = {};
 
 
 /*!

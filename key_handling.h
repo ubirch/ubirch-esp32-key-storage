@@ -28,11 +28,13 @@
 #define KEY_HANDLING_H
 
 #include <string.h>
+#include "ubirch_ed25519.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+extern unsigned char server_pub_key[crypto_sign_PUBLICKEYBYTES];
 
 /*!  
  * Create a new signature Key pair.
