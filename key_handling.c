@@ -24,10 +24,12 @@
 
 
 #include <stdio.h>
+#include <string.h>
 #include <esp_err.h>
 #include <time.h>
 #include <esp_log.h>
 #include <storage.h>
+#include <mbedtls/base64.h>
 #include <ubirch_api.h>
 
 #include "ubirch_ed25519.h"
@@ -46,6 +48,9 @@ unsigned char ed25519_public_key[crypto_sign_PUBLICKEYBYTES] = {};
 
 // define buffer for server public key
 unsigned char server_pub_key[crypto_sign_PUBLICKEYBYTES] = {};
+
+// length of base64 string is ceil(number_of_bytes / 3) * 4 (if number_of_bytes is > 0)
+#define PUBLICKEY_BASE64_STRING_LENGTH ((1 + ((crypto_sign_PUBLICKEYBYTES - 1) / 3)) * 4)
 
 
 /*!
@@ -91,6 +96,28 @@ static esp_err_t store_keys(void) {
     if (memory_error_check(err)) return err;
     //store the public key
     err = kv_store("key_storage", "public_key", ed25519_public_key, sizeof(ed25519_public_key));
+    if (memory_error_check(err)) return err;
+
+    return err;
+}
+
+
+/*!
+ * Read the backend pub Key value from memory
+ *
+ * @note:   key buffer `server_pub_key` has to be allocated, before calling this function.
+ *
+ * @return  ESP_OK if keys were loaded sucessfully
+ *          ESP_ERR... if any error occured
+ */
+static esp_err_t load_backend_key(void) {
+    ESP_LOGI(TAG, "read server pub key");
+    esp_err_t err;
+
+    // read the public key
+    unsigned char *key = server_pub_key;
+    size_t size_pk = sizeof(server_pub_key);
+    err = kv_load("key_storage", "server_key", (void **) &key, &size_pk);
     if (memory_error_check(err)) return err;
 
     return err;
@@ -171,4 +198,41 @@ void check_key_status(void) {
     if (load_keys() != ESP_OK) {
         create_keys();
     }
+    // only load default backend key if there is nothing in flash
+    if (load_backend_key() != ESP_OK) {
+        if (set_backend_default_public_key() != ESP_OK) {
+            ESP_LOGE(TAG, "error setting backend pub key");
+        }
+    }
+}
+
+
+esp_err_t set_backend_default_public_key(void) {
+    return set_backend_public_key(CONFIG_UBIRCH_BACKEND_PUBLIC_KEY);
+}
+
+
+esp_err_t set_backend_public_key(const char* keybase64string) {
+    size_t len = strlen(keybase64string);
+    if (len != PUBLICKEY_BASE64_STRING_LENGTH) {
+        ESP_LOGE(TAG, "unexpected base64 string length");
+        return ESP_FAIL;
+    }
+    size_t outputlen = 0;
+    if (mbedtls_base64_decode(server_pub_key, crypto_sign_PUBLICKEYBYTES, &outputlen,
+            (const unsigned char*)keybase64string, len) != 0) {
+        ESP_LOGE(TAG, "decoding base64 failed");
+        return ESP_FAIL;
+    }
+    if (outputlen != crypto_sign_PUBLICKEYBYTES) {
+        ESP_LOGE(TAG, "decoding base64 returned unexpected key length");
+        return ESP_FAIL;
+    }
+    ESP_LOGI(TAG, "setting backend public key");
+    ESP_LOG_BUFFER_HEXDUMP("key", server_pub_key, len, ESP_LOG_INFO);
+    //store the public key
+    esp_err_t err = kv_store("key_storage", "server_key", server_pub_key, crypto_sign_PUBLICKEYBYTES);
+    if (memory_error_check(err)) return err;
+
+    return err;
 }

@@ -59,6 +59,23 @@ void register_keys(void);
  */
 void check_key_status(void);
 
+/*!
+ * Set backend public key.
+ *
+ * @param key The key in base64 string format, '\0' terminated
+ * @return ESP_OK
+ * @return ESP_FAIL
+ */
+esp_err_t set_backend_public_key(const char* keybase64string);
+
+/*!
+ * Set backend default public key given by Kconfig value CONFIG_UBIRCH_BACKEND_PUBLIC_KEY.
+ *
+ * @return ESP_OK
+ * @return ESP_FAIL
+ */
+esp_err_t set_backend_default_public_key(void);
+
 #ifdef __cplusplus
 }
 #endif
