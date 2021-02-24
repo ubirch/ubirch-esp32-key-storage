@@ -236,3 +236,19 @@ esp_err_t set_backend_public_key(const char* keybase64string) {
 
     return err;
 }
+
+
+esp_err_t get_backend_public_key(char* buffer, const size_t buffer_size) {
+    unsigned int outputlen = 0;
+    switch (mbedtls_base64_encode((unsigned char*)buffer, buffer_size, &outputlen, server_pub_key, crypto_sign_PUBLICKEYBYTES)) {
+        case 0:
+            break;
+        case MBEDTLS_ERR_BASE64_BUFFER_TOO_SMALL:
+            ESP_LOGE(TAG, "buffer size too small");
+            return ESP_FAIL;
+        default:
+            ESP_LOGE(TAG, "error encoding to base64");
+            return ESP_FAIL;
+    }
+    return ESP_OK;
+}
