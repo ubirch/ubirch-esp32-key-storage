@@ -76,6 +76,16 @@ esp_err_t set_backend_public_key(const char* keybase64string);
  */
 esp_err_t set_backend_default_public_key(void);
 
+/*!
+ * Get backend public key from flash in base64 format.
+ *
+ * @param buffer to write resulting string to
+ * @param buffer_size size of provided buffer
+ * @return ESP_OK
+ * @return ESP_FAIL
+ */
+esp_err_t get_backend_public_key(char* buffer, const size_t buffer_size);
+
 #ifdef __cplusplus
 }
 #endif

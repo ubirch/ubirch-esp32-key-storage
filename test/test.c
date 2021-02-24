@@ -60,3 +60,25 @@ TEST_CASE("reject broken keys", "[key handling]") {
     // try to store base64 string that encodes key of wrong length
     TEST_ASSERT_EQUAL_INT(ESP_FAIL, set_backend_public_key("42ABCDbAKFrwF3AJOBgwxGzsAl0B2GCF51pPAEHC5p=="));
 }
+
+TEST_CASE("get backend key in base64 format", "[key handling]") {
+    // store some key
+    const char input[] = "42ABCDbAKFrwF3AJOBgwxGzsAl0B2GCF51pPAEHC5pA=";
+    printf("%s\n", input);
+    TEST_ASSERT_EQUAL_INT(ESP_OK, set_backend_public_key(input));
+    // load in base64 format, buffer needs space for terminating character
+    char buffer[PUBLICKEY_BASE64_STRING_LENGTH + 1];
+    TEST_ASSERT_EQUAL_INT(ESP_OK, get_backend_public_key((char*)buffer, sizeof(buffer)));
+    TEST_ASSERT_EQUAL_STRING(input, buffer);
+    printf("%s\n", buffer);
+}
+
+TEST_CASE("try to get backend key in base64 format into buffer that is too small", "[key handling]") {
+    // store some key
+    const char input[] = "42ABCDbAKFrwF3AJOBgwxGzsAl0B2GCF51pPAEHC5pA=";
+    TEST_ASSERT_EQUAL_INT(ESP_OK, set_backend_public_key(input));
+    // with buffer too small
+    char buffer2[PUBLICKEY_BASE64_STRING_LENGTH];
+    TEST_ASSERT_EQUAL_INT(ESP_FAIL, get_backend_public_key((char*)buffer2, sizeof(buffer2)));
+    printf("%s\n", buffer2);
+}
