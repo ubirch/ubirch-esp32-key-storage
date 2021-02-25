@@ -236,6 +236,9 @@ esp_err_t set_backend_public_key(const char* keybase64string) {
 
 
 esp_err_t get_backend_public_key(char* buffer, const size_t buffer_size) {
+    if (load_backend_key() != ESP_OK) {
+        return ESP_FAIL;
+    }
     unsigned int outputlen = 0;
     switch (mbedtls_base64_encode((unsigned char*)buffer, buffer_size, &outputlen, server_pub_key, crypto_sign_PUBLICKEYBYTES)) {
         case 0:
