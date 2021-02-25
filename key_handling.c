@@ -49,9 +49,6 @@ unsigned char ed25519_public_key[crypto_sign_PUBLICKEYBYTES] = {};
 // define buffer for server public key
 unsigned char server_pub_key[crypto_sign_PUBLICKEYBYTES] = {};
 
-// length of base64 string is ceil(number_of_bytes / 3) * 4 (if number_of_bytes is > 0)
-#define PUBLICKEY_BASE64_STRING_LENGTH ((1 + ((crypto_sign_PUBLICKEYBYTES - 1) / 3)) * 4)
-
 
 /*!
  * Read the Key values from memory
