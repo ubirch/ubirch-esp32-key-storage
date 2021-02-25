@@ -67,16 +67,16 @@ void check_key_status(void);
  * Set backend public key.
  *
  * @param key The key in base64 string format, '\0' terminated
- * @return ESP_OK
- * @return ESP_FAIL
+ * @return ESP_OK if key was set successfully
+ *         ESP_FAIL if any error occured
  */
 esp_err_t set_backend_public_key(const char* keybase64string);
 
 /*!
  * Set backend default public key given by Kconfig value CONFIG_UBIRCH_BACKEND_PUBLIC_KEY.
  *
- * @return ESP_OK
- * @return ESP_FAIL
+ * @return ESP_OK if default key was set successfully
+ *         ESP_FAIL if any error occured
  */
 esp_err_t set_backend_default_public_key(void);
 
@@ -85,8 +85,8 @@ esp_err_t set_backend_default_public_key(void);
  *
  * @param buffer to write resulting string to
  * @param buffer_size size of provided buffer
- * @return ESP_OK
- * @return ESP_FAIL
+ * @return ESP_OK if backened key was written to buffer successfully
+ *         ESP_FAIL if any error occured
  */
 esp_err_t get_backend_public_key(char* buffer, const size_t buffer_size);
 
