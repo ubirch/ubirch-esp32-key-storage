@@ -34,8 +34,9 @@
 extern "C" {
 #endif
 
-// length of base64 string is ceil(number_of_bytes / 3) * 4 (if number_of_bytes is > 0)
-#define PUBLICKEY_BASE64_STRING_LENGTH ((1 + ((crypto_sign_PUBLICKEYBYTES - 1) / 3)) * 4)
+// length of base64 string is ceil(number_of_bytes / 3) * 4
+// to get ceil for value / 3 (value >= 0) we use (value + 2) / 3
+#define PUBLICKEY_BASE64_STRING_LENGTH (((crypto_sign_PUBLICKEYBYTES + 2) / 3) * 4)
 
 extern unsigned char server_pub_key[crypto_sign_PUBLICKEYBYTES];
 
