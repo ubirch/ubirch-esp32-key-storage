@@ -11,6 +11,8 @@ set(COMPONENT_REQUIRES
         ubirch-esp32-api-http
         )
 
-set(COMPONENT_PRIV_REQUIRES )
+set(COMPONENT_PRIV_REQUIRES
+        mbedtls
+        )
 
 register_component()

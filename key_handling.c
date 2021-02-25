@@ -24,10 +24,12 @@
 
 
 #include <stdio.h>
+#include <string.h>
 #include <esp_err.h>
 #include <time.h>
 #include <esp_log.h>
 #include <storage.h>
+#include <mbedtls/base64.h>
 #include <ubirch_api.h>
 
 #include "ubirch_ed25519.h"
@@ -44,13 +46,8 @@ extern unsigned char UUID[16];
 unsigned char ed25519_secret_key[crypto_sign_SECRETKEYBYTES] = {};
 unsigned char ed25519_public_key[crypto_sign_PUBLICKEYBYTES] = {};
 
-// actual ubirch key server public key
-const unsigned char server_pub_key[crypto_sign_PUBLICKEYBYTES] = {
-        0xa2, 0x40, 0x3b, 0x92, 0xbc, 0x9a, 0xdd, 0x36,
-        0x5b, 0x3c, 0xd1, 0x2f, 0xf1, 0x20, 0xd0, 0x20,
-        0x64, 0x7f, 0x84, 0xea, 0x69, 0x83, 0xf9, 0x8b,
-        0xc4, 0xc8, 0x7e, 0x0f, 0x4b, 0xe8, 0xcd, 0x66
-};
+// define buffer for server public key
+unsigned char server_pub_key[crypto_sign_PUBLICKEYBYTES] = {};
 
 
 /*!
@@ -96,6 +93,28 @@ static esp_err_t store_keys(void) {
     if (memory_error_check(err)) return err;
     //store the public key
     err = kv_store("key_storage", "public_key", ed25519_public_key, sizeof(ed25519_public_key));
+    if (memory_error_check(err)) return err;
+
+    return err;
+}
+
+
+/*!
+ * Read the backend pub Key value from memory
+ *
+ * @note:   key buffer `server_pub_key` has to be allocated, before calling this function.
+ *
+ * @return  ESP_OK if keys were loaded sucessfully
+ *          ESP_ERR... if any error occured
+ */
+static esp_err_t load_backend_key(void) {
+    ESP_LOGI(TAG, "read server pub key");
+    esp_err_t err;
+
+    // read the public key
+    unsigned char *key = server_pub_key;
+    size_t size_pk = sizeof(server_pub_key);
+    err = kv_load("key_storage", "server_key", (void **) &key, &size_pk);
     if (memory_error_check(err)) return err;
 
     return err;
@@ -156,12 +175,19 @@ void register_keys(void) {
     }
 
     // send the data
-    err = ubirch_send(CONFIG_UBIRCH_BACKEND_KEY_SERVER_URL, UUID, sbuf->data, sbuf->size, NULL);
-    if(err != ESP_OK) {
-        ESP_LOGE(TAG, "unable to send registration");
+    // TODO: verify response
+    int http_status;
+    if (ubirch_send(CONFIG_UBIRCH_BACKEND_KEY_SERVER_URL, UUID, sbuf->data, sbuf->size, &http_status, NULL, NULL)
+            == UBIRCH_SEND_OK) {
+        if (http_status == 200) {
+            ESP_LOGI(TAG, "successfull sent registration");
+        } else {
+            ESP_LOGE(TAG, "unable to send registration");
+        }
+    } else {
+        ESP_LOGE(TAG, "error while sending registration");
     }
     msgpack_sbuffer_free(sbuf);
-    ESP_LOGI(TAG, "successfull sent registration");
 }
 
 
@@ -169,4 +195,60 @@ void check_key_status(void) {
     if (load_keys() != ESP_OK) {
         create_keys();
     }
+    // only load default backend key if there is nothing in flash
+    if (load_backend_key() != ESP_OK) {
+        if (set_backend_default_public_key() != ESP_OK) {
+            ESP_LOGE(TAG, "error setting backend pub key");
+        }
+    }
+}
+
+
+esp_err_t set_backend_default_public_key(void) {
+    return set_backend_public_key(CONFIG_UBIRCH_BACKEND_PUBLIC_KEY);
+}
+
+
+esp_err_t set_backend_public_key(const char* keybase64string) {
+    size_t len = strlen(keybase64string);
+    if (len != PUBLICKEY_BASE64_STRING_LENGTH) {
+        ESP_LOGE(TAG, "unexpected base64 string length");
+        return ESP_FAIL;
+    }
+    size_t outputlen = 0;
+    if (mbedtls_base64_decode(server_pub_key, crypto_sign_PUBLICKEYBYTES, &outputlen,
+            (const unsigned char*)keybase64string, len) != 0) {
+        ESP_LOGE(TAG, "decoding base64 failed");
+        return ESP_FAIL;
+    }
+    if (outputlen != crypto_sign_PUBLICKEYBYTES) {
+        ESP_LOGE(TAG, "decoding base64 returned unexpected key length");
+        return ESP_FAIL;
+    }
+    ESP_LOGI(TAG, "setting backend public key");
+    ESP_LOG_BUFFER_HEXDUMP("key", server_pub_key, crypto_sign_PUBLICKEYBYTES, ESP_LOG_INFO);
+    //store the public key
+    esp_err_t err = kv_store("key_storage", "server_key", server_pub_key, crypto_sign_PUBLICKEYBYTES);
+    if (memory_error_check(err)) return err;
+
+    return err;
+}
+
+
+esp_err_t get_backend_public_key(char* buffer, const size_t buffer_size) {
+    if (load_backend_key() != ESP_OK) {
+        return ESP_FAIL;
+    }
+    unsigned int outputlen = 0;
+    switch (mbedtls_base64_encode((unsigned char*)buffer, buffer_size, &outputlen, server_pub_key, crypto_sign_PUBLICKEYBYTES)) {
+        case 0:
+            break;
+        case MBEDTLS_ERR_BASE64_BUFFER_TOO_SMALL:
+            ESP_LOGE(TAG, "buffer size too small");
+            return ESP_FAIL;
+        default:
+            ESP_LOGE(TAG, "error encoding to base64");
+            return ESP_FAIL;
+    }
+    return ESP_OK;
 }
