@@ -229,7 +229,7 @@ esp_err_t set_backend_public_key(const char* keybase64string) {
         return ESP_FAIL;
     }
     ESP_LOGI(TAG, "setting backend public key");
-    ESP_LOG_BUFFER_HEXDUMP("key", server_pub_key, len, ESP_LOG_INFO);
+    ESP_LOG_BUFFER_HEXDUMP("key", server_pub_key, crypto_sign_PUBLICKEYBYTES, ESP_LOG_INFO);
     //store the public key
     esp_err_t err = kv_store("key_storage", "server_key", server_pub_key, crypto_sign_PUBLICKEYBYTES);
     if (memory_error_check(err)) return err;
