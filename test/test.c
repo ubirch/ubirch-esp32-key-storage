@@ -3,22 +3,13 @@
 //#define LOG_LOCAL_LEVEL ESP_LOG_DEBUG
 #include <esp_log.h>
 #include <mbedtls/base64.h>
+#include "key_handling.h"
 
 // include compilation unit to be able to test static functions
 #include "key_handling.c"
 
 // dummy uuid
 unsigned char UUID[16] = {0};
-
-
-TEST_CASE("store and load", "[key handling]") {
-    // NOTE: if you want to test the `create_keys` function make sure you don't have anything in the flash you might
-    //       need, then erase it with the help of idftool.py
-    if (load_keys() != ESP_OK) {
-        create_keys();
-    }
-    TEST_ASSERT_EQUAL_INT(ESP_OK, load_keys());
-}
 
 
 TEST_CASE("store and load default backend key", "[key handling]") {

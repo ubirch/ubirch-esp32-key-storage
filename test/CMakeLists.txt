@@ -4,7 +4,7 @@ idf_component_register(
     REQUIRES
         unity
         ubirch-protocol
-        ubirch-esp32-storage
+        ubirch-esp32-key-storage
         ubirch-esp32-api-http
     PRIV_REQUIRES
         mbedtls)
