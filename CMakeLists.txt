@@ -1,5 +1,6 @@
 set(COMPONENT_SRCS
         key_handling.c
+        id_handling.c
         )
 set(COMPONENT_ADD_INCLUDEDIRS ".")
 
