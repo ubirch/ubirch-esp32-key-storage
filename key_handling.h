@@ -41,41 +41,6 @@ extern "C" {
 
 extern unsigned char server_pub_key[crypto_sign_PUBLICKEYBYTES];
 
-/*!  
- * Create a new signature Key pair.
- *
- * After creating the key pair, it is packad into msgpack together with aditional
- * information, according to the structure `ubirch_key_info()`, from `ubirch_protocol_kex.h`,
- * which is part of the `ubirch-protocol` module.
- */
-void create_keys(void);
-
-/*!
- * Register the Keys in the backend.
- *
- * This function can only be executed, if a network connection is available.
- */
-void register_keys(void);
-
-/*!
- * Update the Keys in the backend.
- *
- * This function can only be executed, if a network connection is available.
- */
-int update_keys(void);
-
-/*!
- * Check the current key status.
- *
- * If no keys are present, create new keys. The key registration has to be executed separately.
- */
-#define KEY_STATUS_ERR (-1)
-#define KEY_STATUS_OK (0)
-#define KEY_STATUS_NO_KEYS (1)
-#define KEY_STATUS_NOT_REGISTERED (2)
-#define KEY_STATUS_UPDATE_NEEDED (3)
-int check_key_status(void);
-
 /*!
  * Set backend public key.
  *
@@ -102,6 +67,8 @@ esp_err_t set_backend_default_public_key(void);
  *         ESP_FAIL if any error occured
  */
 esp_err_t get_backend_public_key(char* buffer, const size_t buffer_size);
+
+esp_err_t load_backend_key(void);
 
 #ifdef __cplusplus
 }
