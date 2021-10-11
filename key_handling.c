@@ -38,6 +38,8 @@
 
 #include "key_handling.h"
 
+//#define LOG_LOCAL_LEVEL ESP_LOG_DEBUG
+
 static const char *TAG = "KEYSTORE";
 
 extern unsigned char UUID[16];
@@ -138,7 +140,7 @@ void create_keys(void) {
     memcpy(info.hwDeviceId, UUID, sizeof(UUID));                        // 16 Byte unique hardware device ID
     memcpy(info.pubKey, ed25519_public_key, sizeof(ed25519_public_key));// the public key
     info.validNotAfter = (unsigned int) (time(NULL) +
-                                         31536000);        // time until the key will be valid (now + 1 year)
+                                         KEY_LIFETIME_IN_SECONDS);      // time until the key will be valid (now + 1 year)
     info.validNotBefore = (unsigned int) time(NULL);                    // time from when the key will be valid (now)
 
     // create protocol context
@@ -190,6 +192,109 @@ void register_keys(void) {
     msgpack_sbuffer_free(sbuf);
 }
 
+int update_keys(void) {
+    // get time information
+    time_t now = time(NULL);
+
+    // create new keys
+    unsigned char new_ed25519_secret_key[crypto_sign_SECRETKEYBYTES] = {};
+    unsigned char new_ed25519_public_key[crypto_sign_PUBLICKEYBYTES] = {};
+    crypto_sign_keypair(new_ed25519_public_key, new_ed25519_secret_key);
+
+    // convert keys into base64 format
+    char old_pubKey[BYTES_LENGTH_TO_BASE64_STRING_LENGTH(crypto_sign_PUBLICKEYBYTES) + 1];
+    unsigned int outputlen = 0;
+    if (mbedtls_base64_encode((unsigned char*)old_pubKey, sizeof(old_pubKey),
+                &outputlen, ed25519_public_key, crypto_sign_PUBLICKEYBYTES) != 0) {
+        ESP_LOGW(TAG, "failed to convert old pub key to base64");
+        return -1;
+    }
+    char new_pubKey[BYTES_LENGTH_TO_BASE64_STRING_LENGTH(crypto_sign_PUBLICKEYBYTES) + 1];
+    outputlen = 0;
+    if (mbedtls_base64_encode((unsigned char*)new_pubKey, sizeof(new_pubKey),
+                &outputlen, new_ed25519_public_key, crypto_sign_PUBLICKEYBYTES) != 0) {
+        ESP_LOGW(TAG, "failed to convert new pub key to base64");
+        return -1;
+    }
+
+    // build update json string
+    ubirch_update_key_info update_info = {
+        .algorithm = UBIRCH_KEX_ALG_ECC_ED25519,
+        .created = now,
+        .hwDeviceId = UUID,
+        .pubKey = new_pubKey,
+        .prevPubKeyId = old_pubKey,
+        .validNotAfter = now + KEY_LIFETIME_IN_SECONDS,
+        .validNotBefore = now
+    };
+
+    // init with outer brace
+    char json_string[610] = "{\"pubKeyInfo\":";
+    char *inner_json_string = json_string + strlen(json_string);
+    size_t inner_json_string_size = json_pack_key_update(&update_info, inner_json_string,
+            sizeof(json_string) - strlen(json_string));
+    ESP_LOGD(TAG, "inner json string size: %d", inner_json_string_size);
+    ESP_LOGD(TAG, "inner json string: %s", inner_json_string);
+
+    // sign json with old key
+    unsigned char signature_old[crypto_sign_BYTES];
+    if (ed25519_sign((unsigned char*)inner_json_string, inner_json_string_size, signature_old) != 0) {
+        ESP_LOGW(TAG, "failed to sign with old key");
+        return -1;
+    }
+    char signature_old_base64[BYTES_LENGTH_TO_BASE64_STRING_LENGTH(crypto_sign_BYTES) + 1];
+    outputlen = 0;
+    if (mbedtls_base64_encode((unsigned char*)signature_old_base64, sizeof(signature_old_base64),
+                &outputlen, signature_old, crypto_sign_BYTES) != 0) {
+        ESP_LOGW(TAG, "failed to convert signature to base64");
+        return -1;
+    }
+    // sign json with new key
+    unsigned char signature_new[crypto_sign_BYTES];
+    if (ed25519_sign_key((unsigned char*)inner_json_string, inner_json_string_size, signature_new,
+                new_ed25519_secret_key) != 0) {
+        ESP_LOGW(TAG, "failed to sign with new key");
+        return -1;
+    }
+    char signature_new_base64[BYTES_LENGTH_TO_BASE64_STRING_LENGTH(crypto_sign_BYTES) + 1];
+    outputlen = 0;
+    if (mbedtls_base64_encode((unsigned char*)signature_new_base64, sizeof(signature_new_base64),
+                &outputlen, signature_new, crypto_sign_BYTES) != 0) {
+        ESP_LOGW(TAG, "failed to convert signature to base64");
+        return -1;
+    }
+    // add signatures to json string
+    char *string_index = inner_json_string + inner_json_string_size;
+    string_index += sprintf(string_index, ",\"signature\":\"%s\",\"prevSignature\":\"%s\"}",
+            signature_new_base64, signature_old_base64);
+    size_t json_string_size = string_index - json_string;
+    ESP_LOGD(TAG, "update key json length: %d", json_string_size);
+    ESP_LOGD(TAG, "update key json: %s", json_string);
+
+    // send data
+    int http_status;
+    if (ubirch_send_json(CONFIG_UBIRCH_BACKEND_UPDATE_KEY_SERVER_URL, UUID,
+                json_string, json_string_size, &http_status, NULL, NULL)
+            == UBIRCH_SEND_OK) {
+        if (http_status == 200) {
+            ESP_LOGI(TAG, "successfull sent key update");
+            memcpy(ed25519_secret_key, new_ed25519_secret_key, crypto_sign_SECRETKEYBYTES);
+            memcpy(ed25519_public_key, new_ed25519_public_key, crypto_sign_PUBLICKEYBYTES);
+            if (store_keys() != ESP_OK) {
+                ESP_LOGE(TAG, "failed to store new keys");
+                return -1;
+            }
+        } else {
+            ESP_LOGW(TAG, "unable to send key update, http response is: %d", http_status);
+            return -1;
+        }
+    } else {
+        ESP_LOGW(TAG, "error while sending key update");
+        return -1;
+    }
+
+    return 0;
+}
 
 void check_key_status(void) {
     if (load_keys() != ESP_OK) {
