@@ -164,17 +164,25 @@ void create_keys(void) {
 
 
 void register_keys(void) {
-    ESP_LOGI(TAG, "register identity");
-
+    uint8_t dummy[1] = { 0 };
+    size_t dummy_size = 1;
+    if (kv_load("key_storage", "registered", (void **) &dummy, &dummy_size) == ESP_OK) {
+        ESP_LOGI(TAG, "key already registered");
+        return;
+    }
     msgpack_sbuffer *sbuf = msgpack_sbuffer_new();
     // try to load the certificate if it was generated and stored before
-    esp_err_t err = kv_load("key_storage", "certificate", (void **) &sbuf->data, &sbuf->size);
-    if(err != ESP_OK) {
+    if(kv_load("key_storage", "certificate", (void **) &sbuf->data, &sbuf->size) != ESP_OK) {
         ESP_LOGW(TAG, "creating new certificate");
         create_keys();
+        if (kv_load("key_storage", "certificate", (void **) &sbuf->data, &sbuf->size) != ESP_OK) {
+            ESP_LOGE(TAG, "failed to load certificate of new key");
+            return;
+        }
     } else {
         ESP_LOGI(TAG, "loaded certificate");
     }
+    ESP_LOGI(TAG, "register identity");
 
     // send the data
     // TODO: verify response
@@ -183,6 +191,13 @@ void register_keys(void) {
             == UBIRCH_SEND_OK) {
         if (http_status == 200) {
             ESP_LOGI(TAG, "successfull sent registration");
+            if (kv_delete("key_storage", "certificate") != ESP_OK) {
+                ESP_LOGE(TAG, "failed to delete registered certificate");
+            }
+            ESP_LOGI(TAG, "removed certificate from memory");
+            if (kv_store("key_storage", "registered", dummy, dummy_size) != ESP_OK) {
+                ESP_LOGE(TAG, "failed to store registered marker");
+            }
         } else {
             ESP_LOGE(TAG, "unable to send registration");
         }
