@@ -69,7 +69,12 @@ int update_keys(void);
  *
  * If no keys are present, create new keys. The key registration has to be executed separately.
  */
-void check_key_status(void);
+#define KEY_STATUS_ERR (-1)
+#define KEY_STATUS_OK (0)
+#define KEY_STATUS_NO_KEYS (1)
+#define KEY_STATUS_NOT_REGISTERED (2)
+#define KEY_STATUS_UPDATE_NEEDED (3)
+int check_key_status(void);
 
 /*!
  * Set backend public key.
