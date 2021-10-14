@@ -38,7 +38,10 @@
 
 #include "key_handling.h"
 
-//#define LOG_LOCAL_LEVEL ESP_LOG_DEBUG
+#define LOG_LOCAL_LEVEL ESP_LOG_DEBUG
+
+#define KEY_LIFETIME_IN_SECONDS (31536000) // one year
+#define KEY_UPDATE_BEFORE_EXPIRE (604800)  // one week
 
 static const char *TAG = "KEYSTORE";
 
@@ -50,6 +53,11 @@ unsigned char ed25519_public_key[crypto_sign_PUBLICKEYBYTES] = {};
 
 // define buffer for server public key
 unsigned char server_pub_key[crypto_sign_PUBLICKEYBYTES] = {};
+
+typedef struct key_status_t {
+    unsigned int keys_registered: 1;
+    time_t next_update;
+} key_status_t;
 
 
 /*!
@@ -160,16 +168,18 @@ void create_keys(void) {
     }
     // free allocated resources
     ubirch_protocol_free(upp);
+
+    key_status_t key_status = {
+        .keys_registered = 0,
+        .next_update = info.validNotAfter - KEY_UPDATE_BEFORE_EXPIRE
+    };
+    if (kv_store("key_storage", "key_status", &key_status, sizeof(key_status)) != ESP_OK) {
+        ESP_LOGW(TAG, "failed to store key status in flash");
+    }
 }
 
 
 void register_keys(void) {
-    uint8_t dummy[1] = { 0 };
-    size_t dummy_size = 1;
-    if (kv_load("key_storage", "registered", (void **) &dummy, &dummy_size) == ESP_OK) {
-        ESP_LOGI(TAG, "key already registered");
-        return;
-    }
     msgpack_sbuffer *sbuf = msgpack_sbuffer_new();
     // try to load the certificate if it was generated and stored before
     if(kv_load("key_storage", "certificate", (void **) &sbuf->data, &sbuf->size) != ESP_OK) {
@@ -191,13 +201,20 @@ void register_keys(void) {
             == UBIRCH_SEND_OK) {
         if (http_status == 200) {
             ESP_LOGI(TAG, "successfull sent registration");
+            key_status_t key_status;
+            key_status_t* key_status_ptr = &key_status;
+            size_t key_status_length = sizeof(key_status);
+            if (kv_load("key_storage", "key_status", (void **)&key_status_ptr, &key_status_length) != ESP_OK) {
+                ESP_LOGW(TAG, "failed load status from flash");
+            }
+            key_status.keys_registered = 1;
+            if (kv_store("key_storage", "key_status", key_status_ptr, sizeof(key_status)) != ESP_OK) {
+                ESP_LOGW(TAG, "failed store status to flash");
+            }
             if (kv_delete("key_storage", "certificate") != ESP_OK) {
                 ESP_LOGE(TAG, "failed to delete registered certificate");
             }
             ESP_LOGI(TAG, "removed certificate from memory");
-            if (kv_store("key_storage", "registered", dummy, dummy_size) != ESP_OK) {
-                ESP_LOGE(TAG, "failed to store registered marker");
-            }
         } else {
             ESP_LOGE(TAG, "unable to send registration");
         }
@@ -308,19 +325,54 @@ int update_keys(void) {
         return -1;
     }
 
+    key_status_t key_status = {
+        .keys_registered = 1,
+        .next_update = now + KEY_LIFETIME_IN_SECONDS - KEY_UPDATE_BEFORE_EXPIRE
+    };
+    if (kv_store("key_storage", "key_status", &key_status, sizeof(key_status)) != ESP_OK) {
+        ESP_LOGW(TAG, "failed to write status to flash");
+        return -1;
+    }
+
     return 0;
 }
 
-void check_key_status(void) {
-    if (load_keys() != ESP_OK) {
-        create_keys();
-    }
+int check_key_status(void) {
     // only load default backend key if there is nothing in flash
     if (load_backend_key() != ESP_OK) {
         if (set_backend_default_public_key() != ESP_OK) {
             ESP_LOGE(TAG, "error setting backend pub key");
+            return KEY_STATUS_ERR;
         }
     }
+
+    if (load_keys() != ESP_OK) {
+        return KEY_STATUS_NO_KEYS;
+    }
+
+    // get key status from nvs
+    key_status_t key_status;
+    key_status_t* key_status_ptr = &key_status;
+    size_t key_status_length = sizeof(key_status);
+    if (kv_load("key_storage", "key_status", (void **)&key_status_ptr, &key_status_length) != ESP_OK) {
+        // there is no key status, so set an initial value
+        key_status.keys_registered = 0;
+        key_status.next_update = 0;
+        if (kv_store("key_storage", "key_status", key_status_ptr, sizeof(key_status)) != ESP_OK) {
+            return KEY_STATUS_ERR;
+        }
+        return KEY_STATUS_NOT_REGISTERED;
+    }
+
+    if (key_status.keys_registered == 0) {
+        return KEY_STATUS_NOT_REGISTERED;
+    }
+
+    if (key_status.next_update < time(NULL)) {
+        return KEY_STATUS_UPDATE_NEEDED;
+    }
+
+    return KEY_STATUS_OK;
 }
 
 
