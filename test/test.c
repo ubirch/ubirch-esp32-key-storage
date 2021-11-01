@@ -82,3 +82,11 @@ TEST_CASE("try to get backend key in base64 format into buffer that is too small
     TEST_ASSERT_EQUAL_INT(ESP_FAIL, get_backend_public_key((char*)buffer2, sizeof(buffer2)));
     printf("%s\n", buffer2);
 }
+
+TEST_CASE("key update", "[key handling]") {
+    if (load_keys() != ESP_OK) {
+        create_keys();
+    }
+    TEST_ASSERT_EQUAL_INT(ESP_OK, load_keys());
+    update_keys();
+}

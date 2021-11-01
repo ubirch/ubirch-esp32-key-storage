@@ -37,6 +37,7 @@ extern "C" {
 // length of base64 string is ceil(number_of_bytes / 3) * 4
 // to get ceil for value / 3 (value >= 0) we use (value + 2) / 3
 #define PUBLICKEY_BASE64_STRING_LENGTH (((crypto_sign_PUBLICKEYBYTES + 2) / 3) * 4)
+#define BYTES_LENGTH_TO_BASE64_STRING_LENGTH(__len) (((__len + 2) / 3) * 4)
 
 extern unsigned char server_pub_key[crypto_sign_PUBLICKEYBYTES];
 
@@ -57,11 +58,23 @@ void create_keys(void);
 void register_keys(void);
 
 /*!
+ * Update the Keys in the backend.
+ *
+ * This function can only be executed, if a network connection is available.
+ */
+int update_keys(void);
+
+/*!
  * Check the current key status.
  *
  * If no keys are present, create new keys. The key registration has to be executed separately.
  */
-void check_key_status(void);
+#define KEY_STATUS_ERR (-1)
+#define KEY_STATUS_OK (0)
+#define KEY_STATUS_NO_KEYS (1)
+#define KEY_STATUS_NOT_REGISTERED (2)
+#define KEY_STATUS_UPDATE_NEEDED (3)
+int check_key_status(void);
 
 /*!
  * Set backend public key.
