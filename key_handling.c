@@ -38,10 +38,15 @@
 
 #include "key_handling.h"
 
-#define LOG_LOCAL_LEVEL ESP_LOG_DEBUG
+//#define LOG_LOCAL_LEVEL ESP_LOG_DEBUG
 
-#define KEY_LIFETIME_IN_SECONDS (31536000) // one year
-#define KEY_UPDATE_BEFORE_EXPIRE (604800)  // one week
+#define KEY_LIFETIME_IN_SECONDS (60 * 60 * 24 * 365 * CONFIG_UBIRCH_KEY_LIFETIME_YEARS)
+#define KEY_UPDATE_BEFORE_EXPIRE_IN_SECONDS (60 * 60 * 24 * 7) // one week
+
+#define STR(x) #x
+#define VALUE_STRING(x) STR(x)
+#pragma message ("Key lifetime at creation and update is set to " \
+        VALUE_STRING(CONFIG_UBIRCH_KEY_LIFETIME_YEARS) " year(s)")
 
 static const char *TAG = "KEYSTORE";
 
@@ -171,7 +176,7 @@ void create_keys(void) {
 
     key_status_t key_status = {
         .keys_registered = 0,
-        .next_update = info.validNotAfter - KEY_UPDATE_BEFORE_EXPIRE
+        .next_update = info.validNotAfter - KEY_UPDATE_BEFORE_EXPIRE_IN_SECONDS
     };
     if (kv_store("key_storage", "key_status", &key_status, sizeof(key_status)) != ESP_OK) {
         ESP_LOGW(TAG, "failed to store key status in flash");
@@ -327,7 +332,7 @@ int update_keys(void) {
 
     key_status_t key_status = {
         .keys_registered = 1,
-        .next_update = now + KEY_LIFETIME_IN_SECONDS - KEY_UPDATE_BEFORE_EXPIRE
+        .next_update = now + KEY_LIFETIME_IN_SECONDS - KEY_UPDATE_BEFORE_EXPIRE_IN_SECONDS
     };
     if (kv_store("key_storage", "key_status", &key_status, sizeof(key_status)) != ESP_OK) {
         ESP_LOGW(TAG, "failed to write status to flash");
