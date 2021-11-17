@@ -2,36 +2,22 @@
 
 # ubirch-esp32-key-storage
 
-The ubirch-esp32-key-storage is a component, to handle the keys,
-which are used to sign and verify messages.
+The ubirch-esp32-key-storage is a component, to handle everything related to
+ubirch backend public keys and to one or multiple ubirch device IDs,
+i.e. their state, the UUIDs, passwords, public and secret keys,
+the previous signatures and the "certificates" (a signed version of the public key
+plus some meta-data).
+
+The functions in [`id_handling.h`](https://github.com/ubirch/ubirch-esp32-key-storage/blob/master/id_handling.h)
+are used to load and store data which is ID specific and the functions in
+[key_handling.h](https://github.com/ubirch/ubirch-esp32-key-storage/blob/master/key_handling.h)
+are used to load and store backend specific data.
+For an usage example see [ubirch-esp32-api-http](https://github.com/ubirch/ubirch-esp32-api-http).
 
 ## Prerequisits
 
 The following components are required for the functionality, see also
 [CMakeLists.txt](https://github.com/ubirch/ubirch-esp32-key-storage/blob/master/CMakeLists.txt)
 
-- [ubirch-esp32-networking](https://github.com/ubirch/ubirch-esp32-networking)
 - [ubirch-esp32-storage](https://github.com/ubirch/ubirch-esp32-storage)
 - [ubirch-protocol](https://github.com/ubirch/ubirch-protocol.git)
-- [ubirch-mbed-msgpack](https://github.com/ubirch/ubirch-mbed-msgpack)
-- [ubirch-esp32-api-http](https://github.com/ubirch/ubirch-esp32-api-http)
-
-
-## Usage
-
-The function `create_keys()` creates a new key pair and stores it in the
-flash memory. Additionally it creates a [ubirch_key_info](https://github.com/ubirch/ubirch-protocol/blob/master/ubirch/ubirch_protocol_kex.h)
-certificate with all relevant information about the keys. This structure
-is then embedded in [msgpack](https://github.com/ubirch/ubirch-mbed-msgpack),
-signed and stored into the flash memory.
-
-The function `register_keys()` loads the key certificate from the flash
-memory and sends it via [ubirch_send()](https://github.com/ubirch/ubirch-esp32-api-http/blob/master/ubirch_api.h)
-to the registered backend.
-
-> If this component is part of the [example-esp32](https://github.com/ubirch/example-esp32),
-run `make menuconfig` and go to `UBIRCH Application` to update the key server URL
-
-
-The function `check_key_status()` checks for existing keys in the flash
-memory and if no keys are present, creates new keys.
