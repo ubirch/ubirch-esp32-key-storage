@@ -217,6 +217,13 @@ esp_err_t ubirch_certificate_store(char* certificate, size_t len);
 esp_err_t ubirch_certificate_load(char** certificate, size_t* len);
 
 /*!
+ * Remove certificate from current id in non volatile memory.
+ *
+ * @return ESP_OK or an error code if deletion failed
+ */
+esp_err_t ubirch_certificate_remove(void);
+
+/*!
  * Free pointer to certificate data.
  */
 void ubirch_certificate_free(void);

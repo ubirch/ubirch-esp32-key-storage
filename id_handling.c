@@ -365,6 +365,10 @@ esp_err_t ubirch_certificate_load(char** cert, size_t* len) {
     return ret;
 }
 
+esp_err_t ubirch_certificate_remove(void) {
+    return kv_delete(current_id_context.short_name, KVKEY_CERTIFICATE);
+}
+
 void ubirch_certificate_free(void) {
     free(certificate);
 }
