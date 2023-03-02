@@ -31,6 +31,20 @@
 extern "C" {
 #endif
 
+#define UBIRCH_TOKEN_STATE_VALID (0b00000001)
+#define UBIRCH_TOKEN_STATE_USED  (0b00000010)
+typedef uint8_t ubirch_token_state_t;
+
+/*!
+ * Check token state
+ */
+bool ubirch_token_state_get(ubirch_token_state_t state_bit_mask);
+
+/*!
+ * Set token state
+ */
+void ubirch_token_state_set(const ubirch_token_state_t state_bit_mask, bool value);
+
 /*!
  * Set token. Also set it in NVS memory.
  *

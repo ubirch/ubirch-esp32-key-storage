@@ -66,10 +66,10 @@ esp_err_t ubirch_token_load(void) {
     ESP_LOGI(TAG, "load token from nvs");
     // 1. load token struct from nvs
 	size_t len = TOKEN_MAX_SIZE - 1;
-	char* token_ptr = token;
+	char* token_ptr = token.data;
     esp_err_t err = kv_load(TOKEN_NVS_REGION, TOKEN_NVS_KEY, (void**)&token_ptr, &len);
     ESP_LOGI(TAG, "loaded %d bytes", len);
-	token[len] = '\0';
+	token.data[len] = '\0';
     return err;
 }
 
@@ -85,6 +85,6 @@ esp_err_t ubirch_token_set(const char* token_string) {
 }
 
 esp_err_t ubirch_token_get(const char** buffer_ptr) {
-    *buffer_ptr = token;
+    *buffer_ptr = token.data;
     return ESP_OK;
 }
