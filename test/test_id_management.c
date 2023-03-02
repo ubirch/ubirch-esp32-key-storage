@@ -185,3 +185,15 @@ TEST_CASE("next update", "[id handling]") {
 
     TEST_ASSERT_EQUAL_INT(timestamp, timestamp2);
 }
+
+TEST_CASE("id deletion", "[id handling]") {
+	// this test depends on the "create ids and select"-test
+	// load first id
+    TEST_ASSERT_EQUAL_INT(ESP_OK, ubirch_id_context_load("test_id_1"));
+	// delete the other id
+	TEST_ASSERT_EQUAL_INT(ESP_OK, ubirch_id_context_remove("test_id_2"));
+	TEST_ASSERT_NOT_EQUAL(ESP_OK, ubirch_id_context_load("test_id_2"));
+	// delete currently loaded id
+	TEST_ASSERT_EQUAL_INT(ESP_OK, ubirch_id_context_remove("test_id_1"));
+	TEST_ASSERT_NOT_EQUAL(ESP_OK, ubirch_id_context_load("test_id_1"));
+}

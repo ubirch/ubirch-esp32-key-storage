@@ -117,7 +117,38 @@ esp_err_t ubirch_id_context_add(const char* short_name) {
     current_id_context.memory_state.valid = 1;
     return ESP_OK;
 }
-//esp_err_t ubirch_id_context_remove(const char* short_name);
+
+esp_err_t ubirch_id_context_remove(char* short_name) {
+    if (short_name == NULL) {
+        short_name = current_id_context.short_name;
+    }
+    if (strlen(short_name) > ID_CONTEXT_SHORT_NAME_MAX_LEN) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    esp_err_t ret = ESP_OK;
+    if (kv_delete((char*)short_name, KVKEY_ID_BLOB) != ESP_OK) {
+        ESP_LOGE(TAG, "failed to delete id-blob from kv-storage");
+        ret = ESP_FAIL;
+    }
+    if (kv_delete((char*)short_name, KVKEY_CERTIFICATE) != ESP_OK) {
+        ESP_LOGE(TAG, "failed to delete certificate from kv-storage");
+        ret = ESP_FAIL;
+    }
+    if (kv_delete((char*)short_name, KVKEY_PREVIOUS_SIGNATURE) != ESP_OK) {
+        ESP_LOGE(TAG, "failed to delete previous signature from kv-storage");
+        ret = ESP_FAIL;
+    }
+
+    if (strcmp(short_name, current_id_context.short_name) == 0) {
+        current_id_context.memory_state.raw = 0x00;
+        current_id_context.memory_state.valid = 0;
+        current_id_context.memory_state.id_blob_updated = 0;
+        current_id_context.memory_state.previous_signature_updated = 0;
+    }
+
+    return ret;
+}
 
 const char* ubirch_id_context_get(void) {
     return current_id_context.short_name;

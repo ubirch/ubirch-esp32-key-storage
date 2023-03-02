@@ -57,6 +57,15 @@ const char* ubirch_id_context_get(void);
 esp_err_t ubirch_id_context_add(const char* short_name);
 
 /*!
+ * Remove context from memory if it exists.
+ *
+ * @param[in] short_name    new name for an id_context
+ * @return ESP_OK
+ *         ESP_ERR_INVALID_ARG if short_name is too long
+ */
+esp_err_t ubirch_id_context_remove(char* short_name);
+
+/*!
  * Select an existing id context, i.e. the following variables
  * will be loaded and set:
  * - UUID (used with extern)
