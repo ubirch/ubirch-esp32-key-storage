@@ -47,6 +47,7 @@ TEST_CASE("create ids and select", "[id handling]") {
         0x28, 0x29, 0x2a, 0x2b, 0x2c, 0x2d, 0x2e, 0x2f,
         0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37,
         0x38, 0x39, 0x3a, 0x3b, 0x3c, 0x3d, 0x3e, 0x3f};
+    char* password_1 = "bb6edb4f-a7c3-4f8c-ad71-727d00cc24b6";
 
     // some dummy data for second id
     unsigned char uuid_2[] = {
@@ -75,14 +76,18 @@ TEST_CASE("create ids and select", "[id handling]") {
         0x28, 0x29, 0x2a, 0x2b, 0x2c, 0x2d, 0x2e, 0x2f,
         0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37,
         0x38, 0x39, 0x3a, 0x3b, 0x3c, 0x3d, 0x3e, 0x3f};
+    char* password_2 = "cdf8b1a1-7997-40a8-ab2c-81a29a51a8a0";
 
 
     // add first id
+    // TODO: test ubirch_id_state_set functions
+    // TODO: test ubirch_password_set functions
     TEST_ASSERT_EQUAL_INT(ESP_OK, ubirch_id_context_add("test_id_1"));
     TEST_ASSERT_EQUAL_INT(ESP_OK, ubirch_uuid_set(uuid_1, sizeof(uuid_1)));
     TEST_ASSERT_EQUAL_INT(ESP_OK, ubirch_public_key_set(pub_key_1, sizeof(pub_key_1)));
     TEST_ASSERT_EQUAL_INT(ESP_OK, ubirch_secret_key_set(sec_key_1, sizeof(sec_key_1)));
     TEST_ASSERT_EQUAL_INT(ESP_OK, ubirch_previous_signature_set(prev_sign_1, sizeof(prev_sign_1)));
+    TEST_ASSERT_EQUAL_INT(ESP_OK, ubirch_password_set(password_1, strlen(password_1)));
     TEST_ASSERT_EQUAL_INT(ESP_OK, ubirch_id_context_store());
 
     // add second id
@@ -91,10 +96,14 @@ TEST_CASE("create ids and select", "[id handling]") {
     TEST_ASSERT_EQUAL_INT(ESP_OK, ubirch_public_key_set(pub_key_2, sizeof(pub_key_2)));
     TEST_ASSERT_EQUAL_INT(ESP_OK, ubirch_secret_key_set(sec_key_2, sizeof(sec_key_2)));
     TEST_ASSERT_EQUAL_INT(ESP_OK, ubirch_previous_signature_set(prev_sign_2, sizeof(prev_sign_2)));
+    TEST_ASSERT_EQUAL_INT(ESP_OK, ubirch_password_set(password_2, strlen(password_2)));
     TEST_ASSERT_EQUAL_INT(ESP_OK, ubirch_id_context_store());
 
     unsigned char* prev_sign = NULL;
     size_t prev_sign_len = 0;
+
+    char* password = NULL;
+    size_t password_len = 0;
 
     // select first id
     TEST_ASSERT_EQUAL_INT(ESP_OK, ubirch_id_context_load("test_id_1"));
@@ -105,6 +114,8 @@ TEST_CASE("create ids and select", "[id handling]") {
     TEST_ASSERT_EQUAL_INT(ESP_OK, ubirch_previous_signature_get(&prev_sign, &prev_sign_len));
     TEST_ASSERT_EQUAL_INT(UBIRCH_PROTOCOL_SIGN_SIZE, prev_sign_len);
     TEST_ASSERT_EQUAL_UINT8_ARRAY(prev_sign_1, prev_sign, prev_sign_len);
+    TEST_ASSERT_EQUAL_INT(ESP_OK, ubirch_password_get((char**)&password, &password_len));
+    TEST_ASSERT_EQUAL_UINT8_ARRAY(password_1, password, password_len);
 
     // select second id
     TEST_ASSERT_EQUAL_INT(ESP_OK, ubirch_id_context_load("test_id_2"));
@@ -115,6 +126,8 @@ TEST_CASE("create ids and select", "[id handling]") {
     TEST_ASSERT_EQUAL_INT(ESP_OK, ubirch_previous_signature_get(&prev_sign, &prev_sign_len));
     TEST_ASSERT_EQUAL_INT(UBIRCH_PROTOCOL_SIGN_SIZE, prev_sign_len);
     TEST_ASSERT_EQUAL_UINT8_ARRAY(prev_sign_2, prev_sign, prev_sign_len);
+    TEST_ASSERT_EQUAL_INT(ESP_OK, ubirch_password_get((char**)&password, &password_len));
+    TEST_ASSERT_EQUAL_UINT8_ARRAY(password_2, password, password_len);
     // update some values
     uuid_2[1] = 42;
     TEST_ASSERT_EQUAL_INT(ESP_OK, ubirch_uuid_set(uuid_2, sizeof(uuid_2)));
@@ -142,6 +155,30 @@ TEST_CASE("create ids and select", "[id handling]") {
     TEST_ASSERT_EQUAL_INT(ESP_OK, ubirch_previous_signature_get(&prev_sign, &prev_sign_len));
     TEST_ASSERT_EQUAL_INT(UBIRCH_PROTOCOL_SIGN_SIZE, prev_sign_len);
     TEST_ASSERT_EQUAL_UINT8_ARRAY(prev_sign_2, prev_sign, prev_sign_len);
+}
+
+TEST_CASE("store and load id state", "[id handling]") {
+    TEST_ASSERT_EQUAL_INT(ESP_OK, ubirch_id_context_load("test_id_1"));
+    ubirch_id_state_set(UBIRCH_ID_STATE_KEYS_CREATED, true);
+    ubirch_id_state_set(UBIRCH_ID_STATE_KEYS_REGISTERED, true);
+    ubirch_id_state_set(UBIRCH_ID_STATE_PASSWORD_SET, true);
+    ubirch_id_state_set(UBIRCH_ID_STATE_ID_REGISTERED, true);
+    ubirch_id_state_set(UBIRCH_ID_STATE_PREVIOUS_SIGNATURE_SET, false);
+    TEST_ASSERT_EQUAL_INT(ESP_OK, ubirch_id_context_store());
+
+    TEST_ASSERT_EQUAL_INT(ESP_OK, ubirch_id_context_load("test_id_2"));
+    TEST_ASSERT(!ubirch_id_state_get(UBIRCH_ID_STATE_KEYS_CREATED));
+    TEST_ASSERT(!ubirch_id_state_get(UBIRCH_ID_STATE_KEYS_REGISTERED));
+    TEST_ASSERT(!ubirch_id_state_get(UBIRCH_ID_STATE_PASSWORD_SET));
+    TEST_ASSERT(!ubirch_id_state_get(UBIRCH_ID_STATE_ID_REGISTERED));
+    TEST_ASSERT(ubirch_id_state_get(UBIRCH_ID_STATE_PREVIOUS_SIGNATURE_SET));
+
+    TEST_ASSERT_EQUAL_INT(ESP_OK, ubirch_id_context_load("test_id_1"));
+    TEST_ASSERT(ubirch_id_state_get(UBIRCH_ID_STATE_KEYS_CREATED));
+    TEST_ASSERT(ubirch_id_state_get(UBIRCH_ID_STATE_KEYS_REGISTERED));
+    TEST_ASSERT(ubirch_id_state_get(UBIRCH_ID_STATE_PASSWORD_SET));
+    TEST_ASSERT(ubirch_id_state_get(UBIRCH_ID_STATE_ID_REGISTERED));
+    TEST_ASSERT(!ubirch_id_state_get(UBIRCH_ID_STATE_PREVIOUS_SIGNATURE_SET));
 }
 
 TEST_CASE("store certificate", "[id handling]") {
