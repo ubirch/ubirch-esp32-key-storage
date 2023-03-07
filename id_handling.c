@@ -113,6 +113,7 @@ esp_err_t ubirch_id_context_add(const char* short_name) {
         return ESP_ERR_INVALID_ARG;
     }
     strncpy(current_id_context.short_name, short_name, ID_CONTEXT_SHORT_NAME_MAX_LEN);
+    current_id_context.state = 0x00;
     current_id_context.memory_state.raw = 0x00;
     current_id_context.memory_state.valid = 1;
     return ESP_OK;
@@ -263,6 +264,7 @@ void ubirch_id_state_set(const ubirch_id_state_t state_bit_mask, bool value) {
     } else {
         current_id_context.state &= ~state_bit_mask;
     }
+    current_id_context.memory_state.id_blob_updated = 1;
 }
 
 esp_err_t ubirch_uuid_set(const unsigned char* uuid, size_t len) {
