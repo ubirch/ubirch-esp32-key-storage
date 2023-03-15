@@ -3,6 +3,7 @@
 //#define LOG_LOCAL_LEVEL ESP_LOG_DEBUG
 #include <esp_log.h>
 #include <mbedtls/base64.h>
+#include <storage.h>
 #include "key_handling.h"
 
 // include compilation unit to be able to test static functions
@@ -13,6 +14,7 @@ unsigned char UUID[16] = {0};
 
 
 TEST_CASE("store and load default backend key", "[key handling]") {
+	init_nvs();
     // store key from default configuration
     TEST_ASSERT_EQUAL_INT(ESP_OK, set_backend_default_public_key());
     TEST_ASSERT_EQUAL_INT(ESP_OK, load_backend_key());
@@ -28,6 +30,7 @@ TEST_CASE("store and load default backend key", "[key handling]") {
 }
 
 TEST_CASE("store and load backend key", "[key handling]") {
+	init_nvs();
     // store some key
     const char input[] = "42ABCDbAKFrwF3AJOBgwxGzsAl0B2GCF51pPAEHC5pA=";
     TEST_ASSERT_EQUAL_INT(ESP_OK, set_backend_public_key(input));
@@ -43,6 +46,7 @@ TEST_CASE("store and load backend key", "[key handling]") {
 }
 
 TEST_CASE("reject broken keys", "[key handling]") {
+	init_nvs();
     // try to store key of wrong length
     TEST_ASSERT_EQUAL_INT(ESP_FAIL, set_backend_public_key("42ABCDbAKFrwF3AJOBgwxGzsAl0B2GCF51pPApA="));
     TEST_ASSERT_EQUAL_INT(ESP_FAIL, set_backend_public_key("42ABCDbAKFrwF3AJOBgwxGzsAl0B2GCF51pPAE32425pA="));
@@ -53,6 +57,7 @@ TEST_CASE("reject broken keys", "[key handling]") {
 }
 
 TEST_CASE("get backend key in base64 format", "[key handling]") {
+	init_nvs();
     // store some key
     const char input[] = "42ABCDbAKFrwF3AJOBgwxGzsAl0B2GCF51pPAEHC5pA=";
     printf("%s\n", input);
@@ -65,6 +70,7 @@ TEST_CASE("get backend key in base64 format", "[key handling]") {
 }
 
 TEST_CASE("try to get backend key in base64 format into buffer that is too small", "[key handling]") {
+	init_nvs();
     // store some key
     const char input[] = "42ABCDbAKFrwF3AJOBgwxGzsAl0B2GCF51pPAEHC5pA=";
     TEST_ASSERT_EQUAL_INT(ESP_OK, set_backend_public_key(input));

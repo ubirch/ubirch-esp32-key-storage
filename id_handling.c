@@ -36,12 +36,7 @@
 #define ID_CONTEXT_SHORT_NAME_MAX_LEN (15)
 #define UUID_LEN (16)
 
-#define KVKEY_PERSISTENT_STATE ("state")
-#define KVKEY_UUID ("uuid")
-#define KVKEY_PASSWORD ("pw")
-#define KVKEY_PUBLIC_KEY ("pub_key")
-#define KVKEY_SECRET_KEY ("sec_key")
-#define KVKEY_NEXT_KEY_UPDATE ("nxt_upd")
+#define KVKEY_ID_BLOB ("blob")
 #define KVKEY_CERTIFICATE ("cert")
 #define KVKEY_PREVIOUS_SIGNATURE ("pre_sign")
 
@@ -56,11 +51,7 @@ static struct {
     union {
         struct {
             uint8_t valid                      :1;
-            uint8_t uuid_updated               :1;
-            uint8_t password_updated           :1;
-            uint8_t public_key_updated         :1;
-            uint8_t secret_key_updated         :1;
-            uint8_t next_key_update_updated    :1;
+            uint8_t id_blob_updated            :1;
             uint8_t previous_signature_updated :1;
         };
         uint8_t raw;
@@ -70,6 +61,9 @@ static struct {
     .state = 0x00,
     .memory_state.raw = 0x00
 };
+
+#define ID_BLOB_LENGTH (sizeof(current_id_context.state) + UUID_LEN + PASSWORD_LENGTH + 1 \
+        + crypto_sign_SECRETKEYBYTES + sizeof(time_t))
 
 /*
  * global variables, used with extern
@@ -119,62 +113,92 @@ esp_err_t ubirch_id_context_add(const char* short_name) {
         return ESP_ERR_INVALID_ARG;
     }
     strncpy(current_id_context.short_name, short_name, ID_CONTEXT_SHORT_NAME_MAX_LEN);
+    current_id_context.state = 0x00;
     current_id_context.memory_state.raw = 0x00;
     current_id_context.memory_state.valid = 1;
     return ESP_OK;
 }
-//esp_err_t ubirch_id_context_remove(const char* short_name);
+
+esp_err_t ubirch_id_context_delete(char* short_name) {
+    if (short_name == NULL) {
+        short_name = current_id_context.short_name;
+    }
+    if (strlen(short_name) > ID_CONTEXT_SHORT_NAME_MAX_LEN) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    esp_err_t ret = ESP_OK;
+    if (kv_delete((char*)short_name, KVKEY_ID_BLOB) != ESP_OK) {
+        ESP_LOGE(TAG, "failed to delete id-blob from kv-storage");
+        ret = ESP_FAIL;
+    }
+    if (kv_delete((char*)short_name, KVKEY_CERTIFICATE) != ESP_OK) {
+        ESP_LOGE(TAG, "failed to delete certificate from kv-storage");
+        ret = ESP_FAIL;
+    }
+    if (kv_delete((char*)short_name, KVKEY_PREVIOUS_SIGNATURE) != ESP_OK) {
+        ESP_LOGE(TAG, "failed to delete previous signature from kv-storage");
+        ret = ESP_FAIL;
+    }
+
+    if (strcmp(short_name, current_id_context.short_name) == 0) {
+        current_id_context.memory_state.raw = 0x00;
+        current_id_context.memory_state.valid = 0;
+        current_id_context.memory_state.id_blob_updated = 0;
+        current_id_context.memory_state.previous_signature_updated = 0;
+    }
+
+    return ret;
+}
 
 const char* ubirch_id_context_get(void) {
     return current_id_context.short_name;
 }
 
 esp_err_t ubirch_id_context_load(const char* short_name) {
-    // FIXME: open region only once and load all key-value pairs
-    uint8_t* pmemory_state_addr = &current_id_context.state;
-    esp_err_t ret = load_value(short_name, KVKEY_PERSISTENT_STATE,
-            (void**)&pmemory_state_addr,
-            sizeof(current_id_context.state));
     ESP_LOGD(TAG, "load: short_name = %s, state = %d", short_name, current_id_context.state);
+    // load id blob
+    unsigned char id_blob_buffer[ID_BLOB_LENGTH];
+    unsigned char* addr = id_blob_buffer;
+    esp_err_t ret = load_value(short_name, KVKEY_ID_BLOB, (void**)&addr, ID_BLOB_LENGTH);
     if (ret != ESP_OK) {
-        current_id_context.memory_state.valid = 0;
         return ret;
     }
-    unsigned char* addr = UUID;
-    if ((ret = load_value(short_name, KVKEY_UUID,
-                    (void**)&addr, sizeof(UUID))) != ESP_OK) {
-        current_id_context.memory_state.valid = 0;
-        return ret;
-    }
-    addr = (unsigned char*)current_password; // FIXME: uuaarrggh
-    if (load_value(short_name, KVKEY_PASSWORD,
-                    (void**)&addr, sizeof(current_password)) != ESP_OK) {
-        current_id_context.state &= ~UBIRCH_ID_STATE_PASSWORD_SET;
-    }
-    addr = ed25519_public_key;
-    if (load_value(short_name, KVKEY_PUBLIC_KEY,
-                    (void**)&addr, sizeof(ed25519_public_key)) != ESP_OK) {
-        current_id_context.state &= ~UBIRCH_ID_STATE_KEYS_CREATED;
-    }
-    addr = ed25519_secret_key;
-    if (load_value(short_name, KVKEY_SECRET_KEY,
-                    (void**)&addr, sizeof(ed25519_secret_key)) != ESP_OK) {
-        current_id_context.state &= ~UBIRCH_ID_STATE_KEYS_CREATED;
-    }
-    time_t* next_key_update_addr = &next_key_update;
-    if (load_value(short_name, KVKEY_NEXT_KEY_UPDATE,
-                    (void**)&next_key_update_addr, sizeof(time_t)) != ESP_OK) {
-        current_id_context.state &= ~UBIRCH_ID_STATE_KEYS_REGISTERED;
-    }
+
+    unsigned char* id_blob_buffer_ptr = id_blob_buffer;
+    // copy state from buffer
+    memcpy(&current_id_context.state, id_blob_buffer_ptr, sizeof(current_id_context.state));
+    id_blob_buffer_ptr = id_blob_buffer_ptr + sizeof(current_id_context.state);
+
+    // copy UUID from buffer
+    memcpy(UUID, id_blob_buffer_ptr, UUID_LEN);
+    id_blob_buffer_ptr = id_blob_buffer_ptr + UUID_LEN;
+
+    // copy password from buffer
+    memcpy(current_password, id_blob_buffer_ptr, PASSWORD_LENGTH + 1);
+    id_blob_buffer_ptr = id_blob_buffer_ptr + PASSWORD_LENGTH + 1;
+
+    // copy keypair from buffer
+    memcpy(ed25519_secret_key, id_blob_buffer_ptr, crypto_sign_SECRETKEYBYTES);
+    id_blob_buffer_ptr = id_blob_buffer_ptr + (crypto_sign_SECRETKEYBYTES - crypto_sign_PUBLICKEYBYTES);
+    memcpy(ed25519_public_key, id_blob_buffer_ptr, crypto_sign_PUBLICKEYBYTES);
+    id_blob_buffer_ptr = id_blob_buffer_ptr + crypto_sign_PUBLICKEYBYTES;
+
+    // copy next_key_update from buffer
+    memcpy(&next_key_update, id_blob_buffer_ptr, sizeof(time_t));
+
+    // load previous signature
     addr = previous_signature;
     if (load_value(short_name, KVKEY_PREVIOUS_SIGNATURE,
-                    (void**)&addr, sizeof(previous_signature)) != ESP_OK) {
+                    (void**)&addr, UBIRCH_PROTOCOL_SIGN_SIZE) != ESP_OK) {
         current_id_context.state &= ~UBIRCH_ID_STATE_PREVIOUS_SIGNATURE_SET;
     }
 
     strncpy(current_id_context.short_name, short_name, ID_CONTEXT_SHORT_NAME_MAX_LEN);
-    current_id_context.memory_state.raw = 0x00;
     current_id_context.memory_state.valid = 1;
+    current_id_context.memory_state.id_blob_updated = 0;
+    current_id_context.memory_state.previous_signature_updated = 0;
+
     return ESP_OK;
 }
 
@@ -183,47 +207,39 @@ esp_err_t ubirch_id_context_store(void) {
             current_id_context.short_name,
             current_id_context.state,
             current_id_context.memory_state.raw);
-    esp_err_t ret = ESP_FAIL;
-    if ((ret = store_value(current_id_context.short_name, KVKEY_PERSISTENT_STATE,
-                    &current_id_context.state,
-                    sizeof(current_id_context.state))) != ESP_OK) {
-        return ret;
-    }
+    esp_err_t ret = ESP_OK;
 
-    if ((current_id_context.memory_state.uuid_updated == 1) &&
-            ((ret = store_value(current_id_context.short_name, KVKEY_UUID,
-                                UUID, sizeof(UUID))) != ESP_OK)) {
-        return ret;
-    }
-    current_id_context.memory_state.uuid_updated = 0;
+    if (current_id_context.memory_state.id_blob_updated == 1) {
+        // create ID_BLOB from data
+        unsigned char id_blob_buffer[ID_BLOB_LENGTH];
+        unsigned char* id_blob_buffer_ptr = id_blob_buffer;
 
-    if ((current_id_context.memory_state.password_updated == 1) &&
-            ((ret = store_value(current_id_context.short_name, KVKEY_PASSWORD,
-                                current_password, strlen(current_password))) != ESP_OK)) {
-        return ret;
-    }
-    current_id_context.memory_state.uuid_updated = 0;
+        // copy state to
+        memcpy(id_blob_buffer_ptr, &current_id_context.state, sizeof(current_id_context.state));
+        id_blob_buffer_ptr = id_blob_buffer_ptr + sizeof(current_id_context.state);
 
-    if ((current_id_context.memory_state.public_key_updated == 1) &&
-            ((ret = store_value(current_id_context.short_name, KVKEY_PUBLIC_KEY,
-                                ed25519_public_key, sizeof(ed25519_public_key))) != ESP_OK)) {
-        return ret;
-    }
-    current_id_context.memory_state.public_key_updated = 0;
+        // copy UUID to buffer
+        memcpy(id_blob_buffer_ptr, UUID, UUID_LEN);
+        id_blob_buffer_ptr = id_blob_buffer_ptr + UUID_LEN;
 
-    if ((current_id_context.memory_state.secret_key_updated == 1) &&
-            ((ret = store_value(current_id_context.short_name, KVKEY_SECRET_KEY,
-                                ed25519_secret_key, sizeof(ed25519_secret_key))) != ESP_OK)) {
-        return ret;
-    }
-    current_id_context.memory_state.secret_key_updated = 0;
+        // copy password to buffer
+        memcpy(id_blob_buffer_ptr, current_password, PASSWORD_LENGTH + 1);
+        id_blob_buffer_ptr = id_blob_buffer_ptr + PASSWORD_LENGTH + 1;
 
-    if ((current_id_context.memory_state.next_key_update_updated == 1) &&
-            ((ret = store_value(current_id_context.short_name, KVKEY_NEXT_KEY_UPDATE,
-                                &next_key_update, sizeof(time_t))) != ESP_OK)) {
-        return ret;
+        // copy keypair to buffer
+        memcpy(id_blob_buffer_ptr, ed25519_secret_key, crypto_sign_SECRETKEYBYTES);
+        id_blob_buffer_ptr = id_blob_buffer_ptr + crypto_sign_SECRETKEYBYTES;
+
+        // copy next_key_update to buffer
+        memcpy(id_blob_buffer_ptr, &next_key_update, sizeof(time_t));
+
+        // store id blob
+        if ((ret = store_value(current_id_context.short_name, KVKEY_ID_BLOB,
+                        id_blob_buffer, ID_BLOB_LENGTH)) != ESP_OK) {
+            return ret;
+        }
+        current_id_context.memory_state.id_blob_updated = 0;
     }
-    current_id_context.memory_state.next_key_update_updated = 0;
 
     if ((current_id_context.memory_state.previous_signature_updated == 1) &&
             ((ret = store_value(current_id_context.short_name, KVKEY_PREVIOUS_SIGNATURE,
@@ -232,7 +248,7 @@ esp_err_t ubirch_id_context_store(void) {
     }
     current_id_context.memory_state.previous_signature_updated = 0;
 
-    return ESP_OK;
+    return ret;
 }
 
 bool ubirch_id_state_get(ubirch_id_state_t state_bit_mask) {
@@ -245,6 +261,7 @@ void ubirch_id_state_set(const ubirch_id_state_t state_bit_mask, bool value) {
     } else {
         current_id_context.state &= ~state_bit_mask;
     }
+    current_id_context.memory_state.id_blob_updated = 1;
 }
 
 esp_err_t ubirch_uuid_set(const unsigned char* uuid, size_t len) {
@@ -252,7 +269,7 @@ esp_err_t ubirch_uuid_set(const unsigned char* uuid, size_t len) {
         return ESP_ERR_INVALID_ARG;
     }
     memcpy(UUID, uuid, len);
-    current_id_context.memory_state.uuid_updated = 1;
+    current_id_context.memory_state.id_blob_updated = 1;
     return ESP_OK;
 }
 
@@ -271,7 +288,7 @@ esp_err_t ubirch_password_set(const char* password, size_t len) {
     }
     memcpy(current_password, password, len);
     current_password[PASSWORD_LENGTH + 1] = 0x00;
-    current_id_context.memory_state.password_updated = 1;
+    current_id_context.memory_state.id_blob_updated = 1;
     return ESP_OK;
 }
 
@@ -289,7 +306,7 @@ esp_err_t ubirch_public_key_set(const unsigned char* public_key, size_t len) {
         return ESP_ERR_INVALID_SIZE;
     }
     memcpy(ed25519_public_key, public_key, len);
-    current_id_context.memory_state.public_key_updated = 1;
+    current_id_context.memory_state.id_blob_updated = 1;
     return ESP_OK;
 }
 
@@ -307,7 +324,7 @@ esp_err_t ubirch_secret_key_set(const unsigned char* secret_key, size_t len) {
         return ESP_ERR_INVALID_SIZE;
     }
     memcpy(ed25519_secret_key, secret_key, len);
-    current_id_context.memory_state.secret_key_updated = 1;
+    current_id_context.memory_state.id_blob_updated = 1;
     return ESP_OK;
 }
 
@@ -322,7 +339,7 @@ esp_err_t ubirch_secret_key_get(unsigned char** secret_key, size_t* len) {
 
 void ubirch_next_key_update_set(const time_t next_update) {
     next_key_update = next_update;
-    current_id_context.memory_state.next_key_update_updated = 1;
+    current_id_context.memory_state.id_blob_updated = 1;
 }
 
 esp_err_t ubirch_next_key_update_get(time_t* next_update) {

@@ -35,9 +35,10 @@ extern "C" {
 #endif
 
 #define UBIRCH_ID_STATE_KEYS_CREATED           (0b00000001)
-#define UBIRCH_ID_STATE_PASSWORD_SET           (0b00000010)
-#define UBIRCH_ID_STATE_KEYS_REGISTERED        (0b00000100)
-#define UBIRCH_ID_STATE_PREVIOUS_SIGNATURE_SET (0b00001000)
+#define UBIRCH_ID_STATE_ID_REGISTERED          (0b00000010)
+#define UBIRCH_ID_STATE_PASSWORD_SET           (0b00000100)
+#define UBIRCH_ID_STATE_KEYS_REGISTERED        (0b00001000)
+#define UBIRCH_ID_STATE_PREVIOUS_SIGNATURE_SET (0b00010000)
 typedef uint8_t ubirch_id_state_t;
 
 /*!
@@ -55,6 +56,15 @@ const char* ubirch_id_context_get(void);
  *         ESP_ERR_INVALID_ARG if short_name is too long
  */
 esp_err_t ubirch_id_context_add(const char* short_name);
+
+/*!
+ * Delete context from memory if it exists.
+ *
+ * @param[in] short_name    new name for an id_context
+ * @return ESP_OK
+ *         ESP_ERR_INVALID_ARG if short_name is too long
+ */
+esp_err_t ubirch_id_context_delete(char* short_name);
 
 /*!
  * Select an existing id context, i.e. the following variables
