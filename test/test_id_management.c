@@ -1,4 +1,4 @@
-#include "unity.h"
+#include <unity.h>
 #include <string.h>
 //#define LOG_LOCAL_LEVEL ESP_LOG_DEBUG
 #include <esp_log.h>
@@ -80,8 +80,6 @@ TEST_CASE("create ids and select", "[id handling]") {
 
 
     // add first id
-    // TODO: test ubirch_id_state_set functions
-    // TODO: test ubirch_password_set functions
     TEST_ASSERT_EQUAL_INT(ESP_OK, ubirch_id_context_add("test_id_1"));
     TEST_ASSERT_EQUAL_INT(ESP_OK, ubirch_uuid_set(uuid_1, sizeof(uuid_1)));
     TEST_ASSERT_EQUAL_INT(ESP_OK, ubirch_public_key_set(pub_key_1, sizeof(pub_key_1)));
@@ -158,32 +156,37 @@ TEST_CASE("create ids and select", "[id handling]") {
 }
 
 TEST_CASE("store and load id state", "[id handling]") {
-    TEST_ASSERT_EQUAL_INT(ESP_OK, ubirch_id_context_load("test_id_1"));
+	init_nvs();
+    // create new context and set it's state
+    TEST_ASSERT_EQUAL_INT(ESP_OK, ubirch_id_context_add("test_id_3"));
     ubirch_id_state_set(UBIRCH_ID_STATE_KEYS_CREATED, true);
     ubirch_id_state_set(UBIRCH_ID_STATE_KEYS_REGISTERED, true);
     ubirch_id_state_set(UBIRCH_ID_STATE_PASSWORD_SET, true);
     ubirch_id_state_set(UBIRCH_ID_STATE_ID_REGISTERED, true);
-    ubirch_id_state_set(UBIRCH_ID_STATE_PREVIOUS_SIGNATURE_SET, false);
+    ubirch_id_state_set(UBIRCH_ID_STATE_PREVIOUS_SIGNATURE_SET, true);
     TEST_ASSERT_EQUAL_INT(ESP_OK, ubirch_id_context_store());
 
-    TEST_ASSERT_EQUAL_INT(ESP_OK, ubirch_id_context_load("test_id_2"));
+    // create another context and get default state
+    TEST_ASSERT_EQUAL_INT(ESP_OK, ubirch_id_context_add("test_id_4"));
     TEST_ASSERT(!ubirch_id_state_get(UBIRCH_ID_STATE_KEYS_CREATED));
     TEST_ASSERT(!ubirch_id_state_get(UBIRCH_ID_STATE_KEYS_REGISTERED));
     TEST_ASSERT(!ubirch_id_state_get(UBIRCH_ID_STATE_PASSWORD_SET));
     TEST_ASSERT(!ubirch_id_state_get(UBIRCH_ID_STATE_ID_REGISTERED));
-    TEST_ASSERT(ubirch_id_state_get(UBIRCH_ID_STATE_PREVIOUS_SIGNATURE_SET));
+    TEST_ASSERT(!ubirch_id_state_get(UBIRCH_ID_STATE_PREVIOUS_SIGNATURE_SET));
 
-    TEST_ASSERT_EQUAL_INT(ESP_OK, ubirch_id_context_load("test_id_1"));
+    // load first context again and check state
+    TEST_ASSERT_EQUAL_INT(ESP_OK, ubirch_id_context_load("test_id_3"));
     TEST_ASSERT(ubirch_id_state_get(UBIRCH_ID_STATE_KEYS_CREATED));
     TEST_ASSERT(ubirch_id_state_get(UBIRCH_ID_STATE_KEYS_REGISTERED));
     TEST_ASSERT(ubirch_id_state_get(UBIRCH_ID_STATE_PASSWORD_SET));
     TEST_ASSERT(ubirch_id_state_get(UBIRCH_ID_STATE_ID_REGISTERED));
+    // note that if previous signature cannot be loaded the state is set to false
     TEST_ASSERT(!ubirch_id_state_get(UBIRCH_ID_STATE_PREVIOUS_SIGNATURE_SET));
 }
 
 TEST_CASE("store certificate", "[id handling]") {
-	// this test depends on the "create ids and select"-test
-    TEST_ASSERT_EQUAL_INT(ESP_OK, ubirch_id_context_load("test_id_1"));
+	init_nvs();
+    TEST_ASSERT_EQUAL_INT(ESP_OK, ubirch_id_context_add("test_id_5"));
     char dummy_cert[] = {
         0x01, 0x02, 0x02, 0x03, 0x04, 0xf5, 0x06, 0x07,
         0x08, 0x09, 0x0a, 0x0b, 0x0c, 0xfd, 0x0e, 0x0f,
@@ -204,8 +207,9 @@ TEST_CASE("store certificate", "[id handling]") {
 }
 
 TEST_CASE("next update", "[id handling]") {
+	init_nvs();
 	// this test depends on the "create ids and select"-test
-    TEST_ASSERT_EQUAL_INT(ESP_OK, ubirch_id_context_load("test_id_1"));
+    TEST_ASSERT_EQUAL_INT(ESP_OK, ubirch_id_context_add("test_id_6"));
 
     ubirch_id_state_set(UBIRCH_ID_STATE_KEYS_REGISTERED, true);
 
@@ -213,7 +217,7 @@ TEST_CASE("next update", "[id handling]") {
     ubirch_next_key_update_set(timestamp);
 
     TEST_ASSERT_EQUAL_INT(ESP_OK, ubirch_id_context_store());
-    TEST_ASSERT_EQUAL_INT(ESP_OK, ubirch_id_context_load("test_id_1"));
+    TEST_ASSERT_EQUAL_INT(ESP_OK, ubirch_id_context_load("test_id_6"));
 
     time_t timestamp2 = 0;
     TEST_ASSERT_EQUAL_INT(ESP_OK, ubirch_next_key_update_get(&timestamp2));
@@ -224,13 +228,14 @@ TEST_CASE("next update", "[id handling]") {
 }
 
 TEST_CASE("id deletion", "[id handling]") {
-	// this test depends on the "create ids and select"-test
-	// load first id
-    TEST_ASSERT_EQUAL_INT(ESP_OK, ubirch_id_context_load("test_id_1"));
-	// delete the other id
-	TEST_ASSERT_EQUAL_INT(ESP_OK, ubirch_id_context_remove("test_id_2"));
-	TEST_ASSERT_NOT_EQUAL(ESP_OK, ubirch_id_context_load("test_id_2"));
-	// delete currently loaded id
-	TEST_ASSERT_EQUAL_INT(ESP_OK, ubirch_id_context_remove("test_id_1"));
-	TEST_ASSERT_NOT_EQUAL(ESP_OK, ubirch_id_context_load("test_id_1"));
+	init_nvs();
+	// add two ids
+    TEST_ASSERT_EQUAL_INT(ESP_OK, ubirch_id_context_add("test_id_7"));
+    TEST_ASSERT_EQUAL_INT(ESP_OK, ubirch_id_context_add("test_id_8"));
+	// delete the first
+	TEST_ASSERT_EQUAL_INT(ESP_OK, ubirch_id_context_delete("test_id_7"));
+	TEST_ASSERT_NOT_EQUAL(ESP_OK, ubirch_id_context_load("test_id_7"));
+	// delete currently loaded id, i.e. "test_id_8"
+	TEST_ASSERT_EQUAL_INT(ESP_OK, ubirch_id_context_delete(NULL));
+	TEST_ASSERT_NOT_EQUAL(ESP_OK, ubirch_id_context_load("test_id_8"));
 }

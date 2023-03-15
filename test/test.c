@@ -3,6 +3,7 @@
 //#define LOG_LOCAL_LEVEL ESP_LOG_DEBUG
 #include <esp_log.h>
 #include <mbedtls/base64.h>
+#include <storage.h>
 #include "key_handling.h"
 
 // include compilation unit to be able to test static functions

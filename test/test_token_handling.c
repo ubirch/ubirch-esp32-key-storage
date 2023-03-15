@@ -26,7 +26,7 @@ TEST_CASE("store and load token", "[token handling]") {
         "xNADXOwemJqZaJT-kce8_I1dJycw";
 
     char* buffer;
-    TEST_ASSERT_EQUAL(ESP_OK, ubirch_token_set(token));
+    TEST_ASSERT_EQUAL(ESP_OK, ubirch_token_store(token));
     TEST_ASSERT_EQUAL(ESP_OK, ubirch_token_load());
     TEST_ASSERT_EQUAL(ESP_OK, ubirch_token_get((const char**)&buffer));
     TEST_ASSERT_EQUAL_STRING(token, buffer);
