@@ -73,7 +73,7 @@ esp_err_t ubirch_token_load(void) {
     return err;
 }
 
-esp_err_t ubirch_token_set(const char* token_string) {
+__attribute__((unused)) static esp_err_t ubirch_token_store(const char* token_string) {
     ESP_LOGI(TAG, "set token");
     size_t string_length = strlen(token_string);
 	if (string_length + 1 > TOKEN_MAX_SIZE) {

@@ -41,11 +41,6 @@ typedef uint8_t ubirch_token_state_t;
 bool ubirch_token_state_get(ubirch_token_state_t state_bit_mask);
 
 /*!
- * Set token state
- */
-void ubirch_token_state_set(const ubirch_token_state_t state_bit_mask, bool value);
-
-/*!
  * Set token. Also set it in NVS memory.
  *
  * @param key The key in base64 string format, '\0' terminated
