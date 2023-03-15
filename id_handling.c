@@ -119,7 +119,7 @@ esp_err_t ubirch_id_context_add(const char* short_name) {
     return ESP_OK;
 }
 
-esp_err_t ubirch_id_context_remove(char* short_name) {
+esp_err_t ubirch_id_context_delete(char* short_name) {
     if (short_name == NULL) {
         short_name = current_id_context.short_name;
     }
@@ -169,7 +169,6 @@ esp_err_t ubirch_id_context_load(const char* short_name) {
     // copy state from buffer
     memcpy(&current_id_context.state, id_blob_buffer_ptr, sizeof(current_id_context.state));
     id_blob_buffer_ptr = id_blob_buffer_ptr + sizeof(current_id_context.state);
-    ESP_LOGD(TAG, "load: short_name = %s, state = %d", short_name, current_id_context.state);
 
     // copy UUID from buffer
     memcpy(UUID, id_blob_buffer_ptr, UUID_LEN);
@@ -187,7 +186,6 @@ esp_err_t ubirch_id_context_load(const char* short_name) {
 
     // copy next_key_update from buffer
     memcpy(&next_key_update, id_blob_buffer_ptr, sizeof(time_t));
-    id_blob_buffer_ptr = id_blob_buffer_ptr + PASSWORD_LENGTH + 1;
 
     // load previous signature
     addr = previous_signature;
@@ -234,7 +232,6 @@ esp_err_t ubirch_id_context_store(void) {
 
         // copy next_key_update to buffer
         memcpy(id_blob_buffer_ptr, &next_key_update, sizeof(time_t));
-        id_blob_buffer_ptr = id_blob_buffer_ptr + PASSWORD_LENGTH + 1;
 
         // store id blob
         if ((ret = store_value(current_id_context.short_name, KVKEY_ID_BLOB,
