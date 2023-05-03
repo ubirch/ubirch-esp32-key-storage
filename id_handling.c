@@ -35,6 +35,7 @@
 
 #define ID_CONTEXT_SHORT_NAME_MAX_LEN (15)
 #define UUID_LEN (16)
+#define PASSWORD_LENGTH (36)
 
 #define KVKEY_ID_BLOB ("blob")
 #define KVKEY_CERTIFICATE ("cert")
@@ -76,7 +77,6 @@ unsigned char UUID[UUID_LEN];
 /*
  *
  */
-#define PASSWORD_LENGTH (36)
 static char current_password[PASSWORD_LENGTH + 1] = { '\0' };
 static char* certificate = NULL;
 static unsigned char previous_signature[UBIRCH_PROTOCOL_SIGN_SIZE];
