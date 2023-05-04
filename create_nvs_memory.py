@@ -2,33 +2,15 @@ import argparse
 import json
 import binascii
 
-parser = argparse.ArgumentParser()
-
-parser.add_argument('--json', type=str, help='name of input json-file')
-parser.add_argument('--stage', type=str, default='prod', help='stage to use')
-parser.add_argument('--token', type=str, help='token for id-service access')
-parser.add_argument('--out', type=str, help='name of output csv-file')
-
-args = parser.parse_args()
-
-if args.stage == 'prod':
-    backend_public_key = '74BIrQbAKFrwF3AJOBgwxGzsAl0B2GCF51pPAEHC5pA='
-elif args.stage == 'dev' or args.stage == 'demo':
-    backend_public_key = 'okA7krya3TZbPNEv8SDQIGR/hOppg/mLxMh+D0vozWY='
-else:
-    raise Exception('Unknown stage')
-
-out_filename = args.filename.split('.')[0] + '.csv' \
-    if args.out is None else args.out
-
 
 def csv_head_template(backend_public_key, token):
     head = f'''key,type,encoding,value
 key_storage,namespace,,
 server_key,data,base64,{backend_public_key}
 '''
-    if args.token is not None:
-        head += f'token,data,binary,{token}'
+    if token is not None:
+        head += f'''token,data,binary,{token}
+'''
 
     return head
 
@@ -49,21 +31,55 @@ blob,data,hex2bin,{initial_state}{uuid}{password_hex}{keypair_dummy}{next_update
 pre_sign,data,hex2bin,{pre_sign_dummy}
 '''
 
+# setup arguments
+parser = argparse.ArgumentParser()
 
-if args.json is not None:
-    with open(args.json, 'r') as _f:
-        devices = json.loads(_f.read())
+parser.add_argument('--json', type=str, help='name of input json-file')
+parser.add_argument('--stage', type=str, default='prod', help='stage to use')
+parser.add_argument('--token', type=str, help='token for id-service access')
+parser.add_argument('--out', type=str, help='name of output csv-file')
 
-    if type(devices) == dict:
-        devices = [devices]
+try:
+    # parse arguments
+    args = parser.parse_args()
 
+    # specify backend key
+    if args.stage == 'prod':
+        backend_public_key = '74BIrQbAKFrwF3AJOBgwxGzsAl0B2GCF51pPAEHC5pA='
+    elif args.stage == 'dev' or args.stage == 'demo':
+        backend_public_key = 'okA7krya3TZbPNEv8SDQIGR/hOppg/mLxMh+D0vozWY='
+    else:
+        raise Exception('\nERROR: Unknown stage: ' + args.stage)
+
+    # specify output file
+    if args.out is not None: 
+        out_filename = args.out
+    elif args.json is not None:
+        out_filename = args.json.split('.')[0] + '.csv'
+    else:
+        raise Exception('\nERROR: No --json or --out arguments specified')
+
+    # create csv header
     csv = csv_head_template(backend_public_key, args.token)
 
-    for dev in devices:
-        dev['uuid'] = dev['uuid'].replace('-', '')
-        csv += csv_device_template(dev['short_name'],
-                                   dev['uuid'],
-                                   dev['password'])
+    # create device entries from json
+    if args.json is not None:
+        with open(args.json, 'r') as _f:
+            devices = json.loads(_f.read())
 
-with open(out_filename, 'w') as _f:
-    _f.write(csv)
+        if type(devices) == dict:
+            devices = [devices]
+
+        for dev in devices:
+            dev['uuid'] = dev['uuid'].replace('-', '')
+            csv += csv_device_template(dev['short_name'],
+                                    dev['uuid'],
+                                    dev['password'])
+
+    # write csv to file
+    with open(out_filename, 'w') as _f:
+        _f.write(csv)
+
+except Exception as e:
+    print(e)
+    exit(1)
