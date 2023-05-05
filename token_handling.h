@@ -36,7 +36,10 @@ extern "C" {
 typedef uint8_t ubirch_token_state_t;
 
 /*!
- * Check token state
+ * Check token state.
+ *
+ * @param state_bit_mask The bit mask to check against
+ * @return true if the state of /p state_bit_mask coresponds with stae of token
  */
 bool ubirch_token_state_get(ubirch_token_state_t state_bit_mask);
 
@@ -55,10 +58,15 @@ esp_err_t ubirch_token_set(const char* token_string);
  * @param buffer to write resulting string to
  * @param buffer_size size of provided buffer
  * @return ESP_OK if token was written to buffer successfully
- *         ESP_FAIL if any error occured
  */
 esp_err_t ubirch_token_get(const char** buffer);
 
+/*!
+ * Load token from NVS memory.
+ *
+ * @return ESP_OK if token was loaded successfully
+ *         ESP_FAIL if any error occured
+ */
 esp_err_t ubirch_token_load(void);
 
 #ifdef __cplusplus

@@ -44,7 +44,7 @@ extern unsigned char server_pub_key[crypto_sign_PUBLICKEYBYTES];
 /*!
  * Set backend public key.
  *
- * @param key The key in base64 string format, '\0' terminated
+ * @param keybase64string The key in base64 string format, '\0' terminated
  * @return ESP_OK if key was set successfully
  *         ESP_FAIL if any error occured
  */
@@ -68,6 +68,14 @@ esp_err_t set_backend_default_public_key(void);
  */
 esp_err_t get_backend_public_key(char* buffer, const size_t buffer_size);
 
+/*!
+ * Read the backend pub Key value from memory
+ *
+ * @note:   After calling this function, the backend key is available in /p server_pub_key.
+ *
+ * @return  ESP_OK if keys were loaded sucessfully
+ *          ESP_ERR... if any error occured
+ */
 esp_err_t load_backend_key(void);
 
 #ifdef __cplusplus
