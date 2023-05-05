@@ -1,4 +1,4 @@
-![ubirch logo](https://ubirch.de/wp-content/uploads/2018/10/cropped-uBirch_Logo.png)
+![ubirch logo](files/cropped-uBirch_Logo.png)
 
 # ubirch-esp32-key-storage
 
