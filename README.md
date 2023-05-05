@@ -128,6 +128,10 @@ To backup the whole configuration including the key-pairs, run:
 $ parttool.py read_partition --partition-name=nvs --output my_device_config_backup.bin
 ```
 
+This backup can be very useful, if you develop new features or run tests in between and want to keep and further use the IDs.
+
+>**Note:** If you register the public key for a device and loose the private key, there is no way to replace or remove the public key, which means that the UUID can not be used anymore.
+
 ## Register your device in the Backend
 
 To register your device at the [demo-backend](https://ubirch.demo.ubirch.com/), follow the [ubirch Cloud Services Guideline](https://developer.ubirch.com/cloud-services.html).
