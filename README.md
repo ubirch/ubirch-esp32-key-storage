@@ -10,8 +10,8 @@ plus some meta-data). It is also used to store and handle JWT tokens for automat
 
 The functions in [`id_handling.h`](./id_handling.h)
 are used to load and store data which is ID specific and the functions in
-[key_handling.h](./key_handling.h) are used to load and store backend specific data.
-The functions in [token_handling.h](./token_handling.h) are used to load and store the JWT token.
+[`key_handling.h`](./key_handling.h) are used to load and store backend specific data.
+The functions in [`token_handling.h`](./token_handling.h) are used to load and store the JWT token.
 
 For an example usage see [ubirch-esp32-api-http](https://github.com/ubirch/ubirch-esp32-api-http).
 
@@ -26,14 +26,14 @@ The following components are required for the functionality, see also
 # ubirch ID handling and registration
 
 In order to simplify the management of ubirch identities and the correspondet keys and configurations, 
-the built-in partition `nvs` of the flash storage is used ([Built-in Partition Tables](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-guides/partition-tables.html#built-in-partition-tables)))
+the built-in partition `nvs` of the flash storage is used ([Built-in Partition Tables](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-guides/partition-tables.html#built-in-partition-tables))
 where this data is stored, without the need of modifying the codebase.
 The application is then able to load and store the values in the `nvs` via specific functions from [ubirch-esp32-storage](https://github.com/ubirch/ubirch-esp32-storage)
 
 Before storing the data, it has to be prepared. The first step is to generate a csv file from the data.
 Therefore the python script [create_nvs_memory.py](./create_nvs_memory.py) is used.
 
-## usage of `create_nvs_memory.py`
+## usage of [`create_nvs_memory.py`](./create_nvs_memory.py)
 
 Create the nvs-flash-partition description csv-file (for more details compare
 [the esp-idf documentation](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/storage/nvs_partition_gen.html))
@@ -127,3 +127,7 @@ To backup the whole configuration including the key-pairs, run:
 ```bash
 $ parttool.py read_partition --partition-name=nvs --output my_device_config_backup.bin
 ```
+
+## Register your device in the Backend
+
+To register your device at the [demo-backend](https://ubirch.demo.ubirch.com/), follow the [ubirch Cloud Services Guideline](https://developer.ubirch.com/cloud-services.html).
