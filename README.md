@@ -43,10 +43,12 @@ The python script has some optional input arguments, which will be explained by 
 $ python create_nvs_memory.py --json device_config.json --stage demo --token <insert your token string here> --out out.csv 
 ```
 - `--json device_config.json` is necessary for identity configurations to be stored. 
+If no `--json` argument is given, no devices will be pre-configured (e.g. as in [example-gateway-esp32](https://github.com/ubirch/example-gateway-esp32))
 If no `--out` argument is specified, the output file will be `device_config.csv`
 - `--stage demo` specifies the stage of the ubirch backend, which is needed to provide the public key. 
 If this argument is not used, the default value `prod` will be used.
-- `--token <insert your token string here>` specifies the JWT token.
+- `--token <insert your token string here>` specifies the JWT token. This argument is only needed for 
+automatic device registration.
 - `--out out.csv` specifies the output file.
 
 There are multiple possibilities to use the script, which depend the application.
@@ -115,7 +117,6 @@ Now you have a csv-file and can continue to create the nvs-flash-partition descr
 ```bash
 $ python $IDF_PATH/components/nvs_flash/nvs_partition_generator/nvs_partition_gen.py generate my_device_config.csv my_device_config.bin 0x3000
 ```
-
 ## Flash the partition to your device
 To write the bin-file to your device run:
 ```bash
