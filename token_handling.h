@@ -39,7 +39,7 @@ typedef uint8_t ubirch_token_state_t;
  * Check token state.
  *
  * @param state_bit_mask The bit mask to check against
- * @return true if the state of /p state_bit_mask coresponds with stae of token
+ * @return true if the state of /p state_bit_mask coresponds with state of token
  */
 bool ubirch_token_state_get(ubirch_token_state_t state_bit_mask);
 
