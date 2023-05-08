@@ -46,14 +46,6 @@ typedef struct key_status_t {
 } key_status_t;
 
 
-/*!
- * Read the backend pub Key value from memory
- *
- * @note:   key buffer `server_pub_key` has to be allocated, before calling this function.
- *
- * @return  ESP_OK if keys were loaded sucessfully
- *          ESP_ERR... if any error occured
- */
 esp_err_t load_backend_key(void) {
     ESP_LOGI(TAG, "read server pub key");
     esp_err_t err;
